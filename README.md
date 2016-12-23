@@ -1,5 +1,5 @@
 # playcanvas-p2.js
-An integration of PlayCanvas with the 2D physics engine p2.js
+An integration of PlayCanvas with the 2D physics engine [p2.js](https://github.com/schteppe/p2.js).
 
 ## Usage
 
