@@ -23,6 +23,8 @@ P2World.attributes.add('sleepMode', {
     ],
     default: 0
 });
+P2World.attributes.add('solverIterations', { type: 'number', default: 10 });
+P2World.attributes.add('solverTolerance', { type: 'number', default: 0 });
 
 P2World.prototype.initialize = function() {
     var static = [];
@@ -37,12 +39,14 @@ P2World.prototype.initialize = function() {
 
     // Create a physics world
     var world = new p2.World({
-        gravity : [
+        gravity: [
             this.gravity.x,
             this.gravity.y
         ]
     });
     world.sleepMode = sleepModes[this.sleepMode];
+    world.solver.iterations = this.solverIterations;
+    world.solver.tolerance = this.solverTolerance;
 
     // Handle changes to the World's properties
     this.on('attr:gravity', function (value, prev) {
@@ -51,6 +55,12 @@ P2World.prototype.initialize = function() {
     });
     this.on('attr:sleepMode', function (value, prev) {
         world.sleepMode = sleepModes[value];
+    });
+    this.on('attr:solverIterations', function (value, prev) {
+        world.solver.iterations = Math.round(value);
+    });
+    this.on('attr:solverTolerance', function (value, prev) {
+        world.solver.tolerance = value;
     });
 
     var self = this;
