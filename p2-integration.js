@@ -80,7 +80,7 @@ P2World.prototype.initialize = function() {
 };
 
 P2World.prototype.postUpdate = function(dt) {
-    var i, bodyDef, body, entity;
+    var i, bodyDef, body, entity, pos;
 
     // Set the transforms of kinematic bodies from entities
     for (i = 0; i < this.kinematic.length; i++) {
@@ -89,7 +89,7 @@ P2World.prototype.postUpdate = function(dt) {
         entity = bodyDef.entity;
 
         // TODO: handle angle
-        var pos = entity.getPosition();
+        pos = entity.getPosition();
 
         switch (this.axes) {
             case 1:
@@ -116,17 +116,18 @@ P2World.prototype.postUpdate = function(dt) {
         body = bodyDef.body;
         entity = bodyDef.entity;
 
+        pos = entity.getPosition();
         switch (this.axes) {
             case 1:
-                entity.setPosition(body.position[0], body.position[1], 0);
+                entity.setPosition(body.position[0], body.position[1], pos.z);
                 entity.setEulerAngles(0, 0, body.angle / Math.PI * 180);
                 break;
             case 2:
-                entity.setPosition(body.position[0], 0, -body.position[1]);
+                entity.setPosition(body.position[0], pos.y, -body.position[1]);
                 entity.setEulerAngles(0, body.angle / Math.PI * 180, 0);
                 break;
             case 3:
-                entity.setPosition(0, body.position[0], -body.position[1]);
+                entity.setPosition(pos.x, body.position[0], -body.position[1]);
                 entity.setEulerAngles(body.angle / Math.PI * 180, 0, 0);
                 break;
         }
@@ -142,13 +143,15 @@ var P2Box = pc.createScript('p2Box');
 
 P2Box.attributes.add('width', { type: 'number', default: 1 });
 P2Box.attributes.add('height', { type: 'number', default: 1 });
+P2Box.attributes.add('offset', { type: 'vec2', default: [ 0, 0 ] });
 P2Box.attributes.add('friction', { type: 'number', default: 0.55 });
 P2Box.attributes.add('restitution', { type: 'number', default: 0.55 });
 
 P2Box.prototype.initialize = function() {
     this.shape = new p2.Box({
         width: this.width,
-        height: this.height
+        height: this.height,
+        position: [ this.offset.x, this.offset.y ]
     });
 
     var material = P2Materials[this.friction];
@@ -173,8 +176,13 @@ P2Box.prototype.initialize = function() {
     this.on('attr:width', function (value, prev) {
         this.shape.width = value;
     });
+
     this.on('attr:height', function (value, prev) {
         this.shape.height = value;
+    });
+
+    this.on('attr:offset', function (value, prev) {
+        this.shape.position = [ value.x, value.y ];
     });
 };
 
@@ -184,14 +192,20 @@ P2Box.prototype.initialize = function() {
 var P2Circle = pc.createScript('p2Circle');
 
 P2Circle.attributes.add('radius', { type: 'number', default: 1 });
+P2Circle.attributes.add('offset', { type: 'vec2', default: [ 0, 0 ] });
 
 P2Circle.prototype.initialize = function() {
     this.shape = new p2.Circle({
-        radius: this.radius
+        radius: this.radius,
+        position: [ this.offset.x, this.offset.y ]
     });
 
     this.on('attr:radius', function (value, prev) {
         this.shape.radius = value;
+    });
+
+    this.on('attr:offset', function (value, prev) {
+        this.shape.position = [ value.x, value.y ];
     });
 };
 
