@@ -14,11 +14,26 @@ P2World.attributes.add('axes', {
     ],
     default: 1
 });
+P2World.attributes.add('sleepMode', {
+    type: 'number',
+    enum: [
+        { 'No Sleeping': 0 },
+        { 'Body Sleeping': 1 },
+        { 'Island Sleeping': 2 }
+    ],
+    default: 0
+});
 
 P2World.prototype.initialize = function() {
     var static = [];
     var dynamic = [];
     var kinematic = [];
+    
+    var sleepModes = [
+        p2.World.NO_SLEEPING,
+        p2.World.BODY_SLEEPING,
+        p2.World.ISLAND_SLEEPING
+    ];
 
     // Create a physics world
     var world = new p2.World({
@@ -26,6 +41,16 @@ P2World.prototype.initialize = function() {
             this.gravity.x,
             this.gravity.y
         ]
+    });
+    world.sleepMode = sleepModes[this.sleepMode];
+
+    // Handle changes to the World's properties
+    this.on('attr:gravity', function (value, prev) {
+        world.gravity[0] = value.x;
+        world.gravity[1] = value.y;
+    });
+    this.on('attr:sleepMode', function (value, prev) {
+        world.sleepMode = sleepModes[value];
     });
 
     var self = this;
@@ -68,11 +93,6 @@ P2World.prototype.initialize = function() {
         vehicle.addToWorld(world);
     });
 
-    this.on('attr:gravity', function (value, prev) {
-        this.world.gravity[0] = value.x;
-        this.world.gravity[1] = value.y;
-    });
-    
     this.world = world;
     this.static = static;
     this.dynamic = dynamic;
@@ -176,13 +196,12 @@ P2Box.prototype.initialize = function() {
     this.on('attr:width', function (value, prev) {
         this.shape.width = value;
     });
-
     this.on('attr:height', function (value, prev) {
         this.shape.height = value;
     });
-
     this.on('attr:offset', function (value, prev) {
-        this.shape.position = [ value.x, value.y ];
+        this.shape.position[0] = value.x;
+        this.shape.position[1] = value.y;
     });
 };
 
@@ -203,9 +222,9 @@ P2Circle.prototype.initialize = function() {
     this.on('attr:radius', function (value, prev) {
         this.shape.radius = value;
     });
-
     this.on('attr:offset', function (value, prev) {
-        this.shape.position = [ value.x, value.y ];
+        this.shape.position[0] = value.x;
+        this.shape.position[1] = value.y;
     });
 };
 
@@ -217,52 +236,53 @@ var P2Body = pc.createScript('p2Body');
 P2Body.attributes.add('type', {
     type: 'number',
     enum: [
-        { 'Static': 1 },
-        { 'Dynamic': 2 },
-        { 'Kinematic': 3 }
+        { 'Static': 0 },
+        { 'Dynamic': 1 },
+        { 'Kinematic': 2 }
     ],
     default: 1
 });
 P2Body.attributes.add('mass', { type: 'number', default: 0 });
+P2Body.attributes.add('allowSleep', { type: 'boolean', default: true });
 
 P2Body.prototype.postInitialize = function() {
     var shape;
-    
+    var bodyTypes = [
+        p2.Body.STATIC,
+        p2.Body.DYNAMIC,
+        p2.Body.KINEMATIC
+    ];
+
+    // Create a dynamic body for the chassis
+    var type = bodyTypes[this.type];
+    this.body = new p2.Body({
+        allowSleep: this.allowSleep,
+        angle: 0,
+        mass: (type === p2.Body.STATIC) ? 0 : this.mass,
+        type: type
+    });
+
     if (this.entity.script.p2Box) {
         shape = this.entity.script.p2Box.shape;
     }
     if (this.entity.script.p2Circle) {
         shape = this.entity.script.p2Circle.shape;
     }
-
-    // Create a dynamic body for the chassis
-    var type;
-    switch (this.type) {
-        case 1: type = p2.Body.STATIC; break;
-        case 2: type = p2.Body.DYNAMIC; break;
-        case 3: type = p2.Body.KINEMATIC; break;
-    }
-
-    this.body = new p2.Body({
-        angle: 0,
-        mass: (type === p2.Body.STATIC) ? 0 : this.mass,
-        type: type
-    });
     if (shape) {
         this.body.addShape(shape);
         this.app.fire('p2:addBody', this.body, this.entity);
     }
 
-    this.on('attr:type', function (value, prev) {
-        switch (value) {
-            case 1: this.body.type = p2.Body.STATIC; break;
-            case 2: this.body.type = p2.Body.DYNAMIC; break;
-            case 3: this.body.type = p2.Body.KINEMATIC; break;
-        }
+    // Handle changes to the Body's properties
+    this.on('attr:allowSleep', function (value, prev) {
+        this.body.allowSleep = value;
     });
     this.on('attr:mass', function (value, prev) {
         this.body.mass = value;
         this.body.updateMassProperties();
+    });
+    this.on('attr:type', function (value, prev) {
+        this.body.type = bodyTypes[value];
     });
 };
 
