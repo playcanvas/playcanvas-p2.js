@@ -27,10 +27,6 @@ P2World.attributes.add('solverIterations', { type: 'number', default: 10 });
 P2World.attributes.add('solverTolerance', { type: 'number', default: 0 });
 
 P2World.prototype.initialize = function() {
-    var static = [];
-    var dynamic = [];
-    var kinematic = [];
-    
     var sleepModes = [
         p2.World.NO_SLEEPING,
         p2.World.BODY_SLEEPING,
@@ -65,8 +61,8 @@ P2World.prototype.initialize = function() {
 
     var self = this;
 
-    this.app.on('p2:addBody', function (body, entity) {
-        var pos = entity.getPosition();
+    this.app.on('p2:addBody', function (body) {
+        var pos = body.entity.getPosition();
         switch (self.axes) {
             case 1:
                 body.position = [ pos.x, pos.y ];
@@ -78,62 +74,48 @@ P2World.prototype.initialize = function() {
                 body.position = [ -pos.z, pos.y ];
                 break;
         }
-
         world.addBody(body);
-
-        var record = {
-            entity: entity,
-            body: body
-        };
-
-        switch (body.type) {
-            case p2.Body.STATIC:
-                static.push(record);
-                break;
-            case p2.Body.DYNAMIC:
-                dynamic.push(record);
-                break;
-            case p2.Body.KINEMATIC:
-                kinematic.push(record);
-                break;
-        }
     });
-
+    this.app.on('p2:removeBody', function (body) {
+        world.removeBody(body);
+    });
+    this.app.on('p2:addConstraint', function (constraint) {
+        world.addConstraint(constraint);
+    });
     this.app.on('p2:addVehicle', function (vehicle) {
         vehicle.addToWorld(world);
     });
 
     this.world = world;
-    this.static = static;
-    this.dynamic = dynamic;
-    this.kinematic = kinematic;
 };
 
 P2World.prototype.postUpdate = function(dt) {
-    var i, bodyDef, body, entity, pos;
+    var i, body, entity, pos;
 
-    // Set the transforms of kinematic bodies from entities
-    for (i = 0; i < this.kinematic.length; i++) {
-        bodyDef = this.kinematic[i];
-        body = bodyDef.body;
-        entity = bodyDef.entity;
+    var bodies = this.world.bodies;
+    var numBodies = bodies.length;
 
-        // TODO: handle angle
-        pos = entity.getPosition();
+    for (i = 0; i < numBodies; i++) {
+        body = bodies[i];
+        if (body.type === p2.Body.KINEMATIC) {
+            // TODO: handle angle
+            entity = body.entity;
 
-        switch (this.axes) {
-            case 1:
-                body.position[0] = pos.x;
-                body.position[1] = pos.y;
-                break;
-            case 2:
-                body.position[0] = pos.x;
-                body.position[1] = -pos.z;
-                break;
-            case 3:
-                body.position[0] = pos.y;
-                body.position[1] = -pos.z;
-                break;
+            pos = entity.getPosition();
+            switch (this.axes) {
+                case 1:
+                    body.position[0] = pos.x;
+                    body.position[1] = pos.y;
+                    break;
+                case 2:
+                    body.position[0] = pos.x;
+                    body.position[1] = -pos.z;
+                    break;
+                case 3:
+                    body.position[0] = pos.y;
+                    body.position[1] = -pos.z;
+                    break;
+            }
         }
     }
 
@@ -141,25 +123,26 @@ P2World.prototype.postUpdate = function(dt) {
     this.world.step(1 / 60, dt, this.maxSubSteps);
 
     // Set the transforms of entities from dynamic bodies
-    for (i = 0; i < this.dynamic.length; i++) {
-        bodyDef = this.dynamic[i];
-        body = bodyDef.body;
-        entity = bodyDef.entity;
+    for (i = 0; i < numBodies; i++) {
+        body = bodies[i];
+        if (body.type === p2.Body.DYNAMIC) {
+            entity = body.entity;
 
-        pos = entity.getPosition();
-        switch (this.axes) {
-            case 1:
-                entity.setPosition(body.position[0], body.position[1], pos.z);
-                entity.setEulerAngles(0, 0, body.angle / Math.PI * 180);
-                break;
-            case 2:
-                entity.setPosition(body.position[0], pos.y, -body.position[1]);
-                entity.setEulerAngles(0, body.angle / Math.PI * 180, 0);
-                break;
-            case 3:
-                entity.setPosition(pos.x, body.position[0], -body.position[1]);
-                entity.setEulerAngles(body.angle / Math.PI * 180, 0, 0);
-                break;
+            pos = entity.getPosition();
+            switch (this.axes) {
+                case 1:
+                    entity.setPosition(body.position[0], body.position[1], pos.z);
+                    entity.setEulerAngles(0, 0, body.angle / Math.PI * 180);
+                    break;
+                case 2:
+                    entity.setPosition(body.position[0], pos.y, -body.position[1]);
+                    entity.setEulerAngles(0, body.angle / Math.PI * 180, 0);
+                    break;
+                case 3:
+                    entity.setPosition(pos.x, body.position[0], -body.position[1]);
+                    entity.setEulerAngles(body.angle / Math.PI * 180, 0, 0);
+                    break;
+            }
         }
     }
 };
@@ -236,6 +219,31 @@ P2Circle.prototype.initialize = function() {
         this.shape.position[0] = value.x;
         this.shape.position[1] = value.y;
     });
+
+    // If there's already a body created, simply add the shape to it
+    if (this.entity.script.p2Body) {
+        var body = this.entity.script.p2Body.body;
+        if (body) {
+            body.addShape(this.shape);
+        }
+    }
+
+    this.on("enable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.addShape(this.shape);
+            }
+        }
+    });
+    this.on("disable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.removeShape(this.shape);
+            }
+        }
+    });
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -255,15 +263,14 @@ P2Body.attributes.add('type', {
 P2Body.attributes.add('mass', { type: 'number', default: 0 });
 P2Body.attributes.add('allowSleep', { type: 'boolean', default: true });
 
-P2Body.prototype.postInitialize = function() {
-    var shape;
+P2Body.prototype.initialize = function() {
     var bodyTypes = [
         p2.Body.STATIC,
         p2.Body.DYNAMIC,
         p2.Body.KINEMATIC
     ];
 
-    // Create a dynamic body for the chassis
+    // Create a rigid body
     var type = bodyTypes[this.type];
     this.body = new p2.Body({
         allowSleep: this.allowSleep,
@@ -271,17 +278,7 @@ P2Body.prototype.postInitialize = function() {
         mass: (type === p2.Body.STATIC) ? 0 : this.mass,
         type: type
     });
-
-    if (this.entity.script.p2Box) {
-        shape = this.entity.script.p2Box.shape;
-    }
-    if (this.entity.script.p2Circle) {
-        shape = this.entity.script.p2Circle.shape;
-    }
-    if (shape) {
-        this.body.addShape(shape);
-        this.app.fire('p2:addBody', this.body, this.entity);
-    }
+    this.body.entity = this.entity;
 
     // Handle changes to the Body's properties
     this.on('attr:allowSleep', function (value, prev) {
@@ -294,6 +291,52 @@ P2Body.prototype.postInitialize = function() {
     this.on('attr:type', function (value, prev) {
         this.body.type = bodyTypes[value];
     });
+};
+
+P2Body.prototype.postInitialize = function() {
+    // Add a shape to the body
+    var shape;
+    if (this.entity.script.p2Box) {
+        shape = this.entity.script.p2Box.shape;
+    }
+    if (this.entity.script.p2Circle) {
+        shape = this.entity.script.p2Circle.shape;
+    }
+    if (shape) {
+        this.body.addShape(shape);
+    }
+
+    // Add the body to the phsyics world
+    this.app.fire('p2:addBody', this.body);
+    
+    this.on("enable", function () {
+        this.app.fire('p2:addBody', this.body);
+    });
+    this.on("disable", function () {
+        this.app.fire('p2:removeBody', this.body);
+    });
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// DISTANCE CONSTRAINT /////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var P2DistanceConstraint = pc.createScript('p2DistanceConstraint');
+
+P2DistanceConstraint.attributes.add('other', { type: 'entity' });
+
+P2DistanceConstraint.prototype.postInitialize = function() {
+    var bodyA, bodyB;
+    if (this.entity.script.p2Body) {
+        bodyA = this.entity.script.p2Body.body;
+    }
+    if (this.other && this.other.script && this.other.script.p2Body) {
+        bodyB = this.other.script.p2Body.body;
+    }
+
+    if (bodyA && bodyB) {
+        var constraint = new p2.DistanceConstraint(bodyA, bodyB);
+        this.app.fire('p2:addConstraint', constraint);
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -318,9 +361,10 @@ P2Vehicle.prototype.postInitialize = function() {
     this.chassisBody = new p2.Body({
         mass: this.mass
     });
+    this.chassisBody.entity = this.entity;
     var boxShape = new p2.Box({ width: this.width, height: this.length  });
     this.chassisBody.addShape(boxShape);
-    this.app.fire('p2:addBody', this.chassisBody, this.entity);
+    this.app.fire('p2:addBody', this.chassisBody);
 
     // Create the vehicle
     this.vehicle = new p2.TopDownVehicle(this.chassisBody);
