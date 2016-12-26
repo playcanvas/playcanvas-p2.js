@@ -61,6 +61,20 @@ P2World.prototype.initialize = function() {
 
     var self = this;
 
+    this.app.on('p2:getPosition', function (entity, position) {
+        var pos = entity.getPosition();
+        switch (self.axes) {
+            case 1:
+                position = [ pos.x, pos.y ];
+                break;
+            case 2:
+                position = [ pos.x, -pos.z ];
+                break;
+            case 3:
+                position = [ -pos.z, pos.y ];
+                break;
+        }
+    });
     this.app.on('p2:addBody', function (body) {
         var pos = body.entity.getPosition();
         switch (self.axes) {
@@ -78,9 +92,6 @@ P2World.prototype.initialize = function() {
     });
     this.app.on('p2:removeBody', function (body) {
         world.removeBody(body);
-    });
-    this.app.on('p2:addConstraint', function (constraint) {
-        world.addConstraint(constraint);
     });
     this.app.on('p2:addVehicle', function (vehicle) {
         vehicle.addToWorld(world);
@@ -331,12 +342,15 @@ P2Body.attributes.add('fixedX', { type: 'boolean', default: false });
 P2Body.attributes.add('fixedY', { type: 'boolean', default: false });
 P2Body.attributes.add('fixedRotation', { type: 'boolean', default: false });
 
-P2Body.prototype.initialize = function() {
+P2Body.prototype.postInitialize = function() {
     var bodyTypes = [
         p2.Body.STATIC,
         p2.Body.DYNAMIC,
         p2.Body.KINEMATIC
     ];
+
+    var pos = [ 0, 0 ];
+    this.app.fire('p2:getPosition', this.entity, pos);
 
     // Create a rigid body
     var type = bodyTypes[this.type];
@@ -377,9 +391,7 @@ P2Body.prototype.initialize = function() {
     this.on('attr:type', function (value, prev) {
         this.body.type = bodyTypes[value];
     });
-};
 
-P2Body.prototype.postInitialize = function() {
     // Add a shape to the body
     var shape;
     if (this.entity.script.p2Box) {
@@ -404,6 +416,9 @@ P2Body.prototype.postInitialize = function() {
     this.on("disable", function () {
         this.app.fire('p2:removeBody', this.body);
     });
+
+    // Notify other components on the entity that there's a new body
+    this.entity.fire('p2:newBody', this.body);
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -415,26 +430,63 @@ P2DistanceConstraint.attributes.add('other', { type: 'entity' });
 P2DistanceConstraint.attributes.add('collideConnected', { type: 'boolean', default: true });
 P2DistanceConstraint.attributes.add('stiffness', { type: 'number', default: 1e6 });
 P2DistanceConstraint.attributes.add('relaxation', { type: 'number', default: 4 });
+P2DistanceConstraint.attributes.add('localAnchorA', { type: 'vec2', default: [ 0, 0 ] });
+P2DistanceConstraint.attributes.add('localAnchorB', { type: 'vec2', default: [ 0, 0 ] });
+
+P2DistanceConstraint.prototype.createConstraint = function() {
+    // (Re-)create the constraint
+    if (this.constraint) {
+        body.world.removeConstraint(this.constraint);
+    }
+    this.constraint = new p2.DistanceConstraint(this.bodyA, this.bodyB, {
+        collideConnected: this.collideConnected,
+        localAnchorA: [ this.localAnchorA.x, this.localAnchorA.y ],
+        localAnchorB: [ this.localAnchorB.x, this.localAnchorB.y ]
+    });
+    this.constraint.setStiffness(this.stiffness);
+    this.constraint.setRelaxation(this.relaxation);
+    this.bodyA.world.addConstraint(this.constraint);
+};
 
 P2DistanceConstraint.prototype.postInitialize = function() {
-    var bodyA, bodyB;
+    this.bodyA = null;
+    this.bodyB = null;
     if (this.entity.script.p2Body) {
-        bodyA = this.entity.script.p2Body.body;
+        this.bodyA = this.entity.script.p2Body.body;
     }
     if (this.other && this.other.script && this.other.script.p2Body) {
-        bodyB = this.other.script.p2Body.body;
+        this.bodyB = this.other.script.p2Body.body;
     }
-
-    if (bodyA && bodyB) {
-        this.constraint = new p2.DistanceConstraint(bodyA, bodyB, {
-            collideConnected: this.collideConnected
-        });
-        this.constraint.setStiffness(this.stiffness);
-        this.constraint.setRelaxation(this.relaxation);
-        this.app.fire('p2:addConstraint', this.constraint);
+    
+    // If we have two bodies, we can go ahead and create the constraint
+    if (this.bodyA && this.bodyB) {
+        this.createConstraint();
     }
+    
+    // One of the two bodies has changed so (re-)create the constraint
+    var self = this;
+    this.entity.on('p2:newBody', function (body) {
+        self.bodyA = body;
+        self.createConstraint();
+    });
+    this.other.on('p2:newBody', function (body) {
+        self.bodyB = body;
+        self.createConstraint();
+    });    
 
-    // Handle changes to the Constraint's properties
+    // Handle changes to the constraint's properties
+    this.on('attr:localAnchorA', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.localAnchorA[0] = value.x;
+            this.constraint.localAnchorA[1] = value.y;
+        }
+    });
+    this.on('attr:localAnchorB', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.localAnchorB[0] = value.x;
+            this.constraint.localAnchorB[1] = value.y;
+        }
+    });
     this.on('attr:stiffness', function (value, prev) {
         if (this.constraint) {
             this.constraint.setStiffness(value);
