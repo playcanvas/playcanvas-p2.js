@@ -168,17 +168,23 @@ var P2Box = pc.createScript('p2Box');
 
 P2Box.attributes.add('width', { type: 'number', default: 1 });
 P2Box.attributes.add('height', { type: 'number', default: 1 });
-P2Box.attributes.add('offset', { type: 'vec2', default: [ 0, 0 ] });
+P2Box.attributes.add('angle', { type: 'number', default: 0 });
+P2Box.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
+P2Box.attributes.add('sensor', { type: 'boolean', default: false });
 P2Box.attributes.add('friction', { type: 'number', default: 0.55 });
 P2Box.attributes.add('restitution', { type: 'number', default: 0.55 });
+P2Box.attributes.add('surfaceVelocity', { type: 'number', default: 0 });
 
 P2Box.prototype.initialize = function() {
     this.shape = new p2.Box({
-        width: this.width,
+        angle: this.angle,
         height: this.height,
-        position: [ this.offset.x, this.offset.y ]
+        position: [ this.position.x, this.position.y ],
+        sensor: this.sensor,
+        width: this.width
     });
 
+    /*
     var material = P2Materials[this.friction];
     if (!material) {
         material = new p2.Material();
@@ -198,15 +204,27 @@ P2Box.prototype.initialize = function() {
 
 //    this.shape.material = material;
 
-    this.on('attr:width', function (value, prev) {
-        this.shape.width = value;
+    var contactMaterial1 = new p2.ContactMaterial(boxShape.material, platformShape1.material, {
+        surfaceVelocity:-0.5,
+    });
+    world.addContactMaterial(contactMaterial1);    
+    */
+    
+    this.on('attr:angle', function (value, prev) {
+        this.shape.angle = value * Math.PI / 180;
     });
     this.on('attr:height', function (value, prev) {
         this.shape.height = value;
     });
-    this.on('attr:offset', function (value, prev) {
+    this.on('attr:position', function (value, prev) {
         this.shape.position[0] = value.x;
         this.shape.position[1] = value.y;
+    });
+    this.on('attr:sensor', function (value, prev) {
+        this.shape.sensor = value;
+    });
+    this.on('attr:width', function (value, prev) {
+        this.shape.width = value;
     });
 
     // If there's already a body created, simply add the shape to it
@@ -241,20 +259,95 @@ P2Box.prototype.initialize = function() {
 var P2Circle = pc.createScript('p2Circle');
 
 P2Circle.attributes.add('radius', { type: 'number', default: 1 });
-P2Circle.attributes.add('offset', { type: 'vec2', default: [ 0, 0 ] });
+P2Circle.attributes.add('angle', { type: 'number', default: 0 });
+P2Circle.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
+P2Circle.attributes.add('sensor', { type: 'boolean', default: false });
 
 P2Circle.prototype.initialize = function() {
     this.shape = new p2.Circle({
+        angle: this.angle,
         radius: this.radius,
-        position: [ this.offset.x, this.offset.y ]
+        position: [ this.position.x, this.position.y ],
+        sensor: this.sensor
     });
 
+    this.on('attr:angle', function (value, prev) {
+        this.shape.angle = value * Math.PI / 180;
+    });
+    this.on('attr:position', function (value, prev) {
+        this.shape.position[0] = value.x;
+        this.shape.position[1] = value.y;
+    });
     this.on('attr:radius', function (value, prev) {
         this.shape.radius = value;
     });
-    this.on('attr:offset', function (value, prev) {
+    this.on('attr:sensor', function (value, prev) {
+        this.shape.sensor = value;
+    });
+
+    // If there's already a body created, simply add the shape to it
+    if (this.shape.body !== null) {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.addShape(this.shape);
+            }
+        }
+    }
+
+    this.on("enable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.addShape(this.shape);
+            }
+        }
+    });
+    this.on("disable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.removeShape(this.shape);
+            }
+        }
+    });
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// CAPSULE SHAPE ///////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var P2Capsule = pc.createScript('p2Capsule');
+
+P2Capsule.attributes.add('length', { type: 'number', default: 1 });
+P2Capsule.attributes.add('radius', { type: 'number', default: 1 });
+P2Capsule.attributes.add('angle', { type: 'number', default: 0 });
+P2Capsule.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
+P2Capsule.attributes.add('sensor', { type: 'boolean', default: false });
+
+P2Capsule.prototype.initialize = function() {
+    this.shape = new p2.Capsule({
+        angle: this.angle,
+        length: this.length,
+        position: [ this.position.x, this.position.y ],
+        radius: this.radius,
+        sensor: this.sensor
+    });
+
+    this.on('attr:angle', function (value, prev) {
+        this.shape.angle = value * Math.PI / 180;
+    });
+    this.on('attr:length', function (value, prev) {
+        this.shape.length = value;
+    });
+    this.on('attr:position', function (value, prev) {
         this.shape.position[0] = value.x;
         this.shape.position[1] = value.y;
+    });
+    this.on('attr:radius', function (value, prev) {
+        this.shape.radius = value;
+    });
+    this.on('attr:sensor', function (value, prev) {
+        this.shape.sensor = value;
     });
 
     // If there's already a body created, simply add the shape to it
@@ -290,10 +383,28 @@ P2Circle.prototype.initialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2Plane = pc.createScript('p2Plane');
 
+P2Plane.attributes.add('angle', { type: 'number', default: 0 });
+P2Plane.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
+P2Plane.attributes.add('sensor', { type: 'boolean', default: false });
+
 P2Plane.prototype.initialize = function() {
     this.shape = new p2.Plane({
+        angle: this.angle,
+        position: [ this.position.x, this.position.y ],
+        sensor: this.sensor
     });
 
+    this.on('attr:angle', function (value, prev) {
+        this.shape.angle = value * Math.PI / 180;
+    });
+    this.on('attr:position', function (value, prev) {
+        this.shape.position[0] = value.x;
+        this.shape.position[1] = value.y;
+    });
+    this.on('attr:sensor', function (value, prev) {
+        this.shape.sensor = value;
+    });
+    
     // If there's already a body created, simply add the shape to it
     if (this.entity.script.p2Body) {
         var body = this.entity.script.p2Body.body;
@@ -491,6 +602,106 @@ P2DistanceConstraint.prototype.postInitialize = function() {
         if (this.constraint) {
             this.constraint.localAnchorB[0] = value.x;
             this.constraint.localAnchorB[1] = value.y;
+        }
+    });
+    this.on('attr:other', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyB = body;
+            if (this.bodyA) {
+                this.createConstraint();
+            }
+        });    
+    });
+    this.on('attr:stiffness', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setStiffness(value);
+        }
+    });
+    this.on('attr:relaxation', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setRelaxation(value);
+        }
+    });
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// REVOLUTE CONSTRAINT /////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var P2RevoluteConstraint = pc.createScript('p2RevoluteConstraint');
+
+P2RevoluteConstraint.attributes.add('other', { type: 'entity' });
+P2RevoluteConstraint.attributes.add('collideConnected', { type: 'boolean', default: true });
+P2RevoluteConstraint.attributes.add('stiffness', { type: 'number', default: 1e6 });
+P2RevoluteConstraint.attributes.add('relaxation', { type: 'number', default: 4 });
+P2RevoluteConstraint.attributes.add('localPivotA', { type: 'vec2', default: [ 0, 0 ] });
+P2RevoluteConstraint.attributes.add('localPivotB', { type: 'vec2', default: [ 0, 0 ] });
+P2RevoluteConstraint.attributes.add('limits', { type: 'vec2', default: [ -180, 180 ] });
+
+P2RevoluteConstraint.prototype.createConstraint = function() {
+    // (Re-)create the constraint
+    if (this.constraint) {
+        this.bodyA.world.removeConstraint(this.constraint);
+    }
+    this.constraint = new p2.RevoluteConstraint(this.bodyA, this.bodyB, {
+        collideConnected: this.collideConnected,
+        localPivotA: [ this.localPivotA.x, this.localPivotA.y ],
+        localPivotB: [ this.localPivotB.x, this.localPivotB.y ]
+    });
+    this.constraint.setStiffness(this.stiffness);
+    this.constraint.setRelaxation(this.relaxation);
+    this.constraint.setLimits(this.limits.x, this.limits.y);
+    this.bodyA.world.addConstraint(this.constraint);
+};
+
+P2RevoluteConstraint.prototype.postInitialize = function() {
+    this.bodyA = null;
+    this.bodyB = null;
+    if (this.entity.script.p2Body) {
+        this.bodyA = this.entity.script.p2Body.body;
+    }
+    if (this.other && this.other.script && this.other.script.p2Body) {
+        this.bodyB = this.other.script.p2Body.body;
+    }
+    
+    // If we have two bodies, we can go ahead and create the constraint
+    if (this.bodyA && this.bodyB) {
+        this.createConstraint();
+    }
+    
+    // One of the two bodies has changed so (re-)create the constraint
+    var self = this;
+    this.entity.on('p2:newBody', function (body) {
+        self.bodyA = body;
+        if (self.bodyB) {
+            self.createConstraint();
+        }
+    });
+    if (this.other) {
+        this.other.on('p2:newBody', function (body) {
+            self.bodyB = body;
+            if (self.bodyA) {
+                self.createConstraint();
+            }
+        });    
+    }
+
+    // Handle changes to the constraint's properties
+    this.on('attr:limits', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setLimits(value.x, value.y);
+        }
+    });
+    this.on('attr:localPivotA', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.localPivotA[0] = value.x;
+            this.constraint.localPivotA[1] = value.y;
+        }
+    });
+    this.on('attr:localPivotB', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.localPivotB[0] = value.x;
+            this.constraint.localPivotB[1] = value.y;
         }
     });
     this.on('attr:other', function (value, prev) {
