@@ -95,6 +95,7 @@ P2World.prototype.postUpdate = function(dt) {
     var bodies = this.world.bodies;
     var numBodies = bodies.length;
 
+    // Set the transforms of kinematic rigid bodies from parent entities
     for (i = 0; i < numBodies; i++) {
         body = bodies[i];
         if (body.type === p2.Body.KINEMATIC) {
@@ -196,6 +197,31 @@ P2Box.prototype.initialize = function() {
         this.shape.position[0] = value.x;
         this.shape.position[1] = value.y;
     });
+
+    // If there's already a body created, simply add the shape to it
+    if (this.entity.script.p2Body) {
+        var body = this.entity.script.p2Body.body;
+        if (body) {
+            body.addShape(this.shape);
+        }
+    }
+
+    this.on("enable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.addShape(this.shape);
+            }
+        }
+    });
+    this.on("disable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.removeShape(this.shape);
+            }
+        }
+    });
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +244,43 @@ P2Circle.prototype.initialize = function() {
     this.on('attr:offset', function (value, prev) {
         this.shape.position[0] = value.x;
         this.shape.position[1] = value.y;
+    });
+
+    // If there's already a body created, simply add the shape to it
+    if (this.shape.body !== null) {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.addShape(this.shape);
+            }
+        }
+    }
+
+    this.on("enable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.addShape(this.shape);
+            }
+        }
+    });
+    this.on("disable", function () {
+        if (this.entity.script.p2Body) {
+            var body = this.entity.script.p2Body.body;
+            if (body) {
+                body.removeShape(this.shape);
+            }
+        }
+    });
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// PLANE SHAPE /////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var P2Plane = pc.createScript('p2Plane');
+
+P2Plane.prototype.initialize = function() {
+    this.shape = new p2.Plane({
     });
 
     // If there's already a body created, simply add the shape to it
@@ -260,8 +323,13 @@ P2Body.attributes.add('type', {
     ],
     default: 1
 });
-P2Body.attributes.add('mass', { type: 'number', default: 0 });
+P2Body.attributes.add('mass', { type: 'number', default: 1 });
 P2Body.attributes.add('allowSleep', { type: 'boolean', default: true });
+P2Body.attributes.add('initialVelocity', { type: 'vec2', default: [ 0, 0 ] });
+P2Body.attributes.add('gravityScale', { type: 'number', default: 1 });
+P2Body.attributes.add('fixedX', { type: 'boolean', default: false });
+P2Body.attributes.add('fixedY', { type: 'boolean', default: false });
+P2Body.attributes.add('fixedRotation', { type: 'boolean', default: false });
 
 P2Body.prototype.initialize = function() {
     var bodyTypes = [
@@ -275,14 +343,32 @@ P2Body.prototype.initialize = function() {
     this.body = new p2.Body({
         allowSleep: this.allowSleep,
         angle: 0,
+        gravityScale: this.gravityScale,
         mass: (type === p2.Body.STATIC) ? 0 : this.mass,
-        type: type
+        type: type,
+        velocity: [ this.initialVelocity.x, this.initialVelocity.y ]
     });
+    this.body.fixedX = this.fixedX;
+    this.body.fixedY = this.fixedY;
+    this.body.fixedRotation = this.fixedRotation;
+
     this.body.entity = this.entity;
 
     // Handle changes to the Body's properties
     this.on('attr:allowSleep', function (value, prev) {
         this.body.allowSleep = value;
+    });
+    this.on('attr:fixedX', function (value, prev) {
+        this.body.fixedX = value;
+    });
+    this.on('attr:fixedY', function (value, prev) {
+        this.body.fixedY = value;
+    });
+    this.on('attr:fixedRotation', function (value, prev) {
+        this.body.fixedRotation = value;
+    });
+    this.on('attr:gravityScale', function (value, prev) {
+        this.body.gravityScale = value;
     });
     this.on('attr:mass', function (value, prev) {
         this.body.mass = value;
@@ -301,6 +387,9 @@ P2Body.prototype.postInitialize = function() {
     }
     if (this.entity.script.p2Circle) {
         shape = this.entity.script.p2Circle.shape;
+    }
+    if (this.entity.script.p2Plane) {
+        shape = this.entity.script.p2Plane.shape;
     }
     if (shape) {
         this.body.addShape(shape);
@@ -323,6 +412,9 @@ P2Body.prototype.postInitialize = function() {
 var P2DistanceConstraint = pc.createScript('p2DistanceConstraint');
 
 P2DistanceConstraint.attributes.add('other', { type: 'entity' });
+P2DistanceConstraint.attributes.add('collideConnected', { type: 'boolean', default: true });
+P2DistanceConstraint.attributes.add('stiffness', { type: 'number', default: 1e6 });
+P2DistanceConstraint.attributes.add('relaxation', { type: 'number', default: 4 });
 
 P2DistanceConstraint.prototype.postInitialize = function() {
     var bodyA, bodyB;
@@ -334,9 +426,25 @@ P2DistanceConstraint.prototype.postInitialize = function() {
     }
 
     if (bodyA && bodyB) {
-        var constraint = new p2.DistanceConstraint(bodyA, bodyB);
-        this.app.fire('p2:addConstraint', constraint);
+        this.constraint = new p2.DistanceConstraint(bodyA, bodyB, {
+            collideConnected: this.collideConnected
+        });
+        this.constraint.setStiffness(this.stiffness);
+        this.constraint.setRelaxation(this.relaxation);
+        this.app.fire('p2:addConstraint', this.constraint);
     }
+
+    // Handle changes to the Constraint's properties
+    this.on('attr:stiffness', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setStiffness(value);
+        }
+    });
+    this.on('attr:relaxation', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setRelaxation(value);
+        }
+    });
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
