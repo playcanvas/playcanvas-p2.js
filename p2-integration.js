@@ -436,7 +436,7 @@ P2DistanceConstraint.attributes.add('localAnchorB', { type: 'vec2', default: [ 0
 P2DistanceConstraint.prototype.createConstraint = function() {
     // (Re-)create the constraint
     if (this.constraint) {
-        body.world.removeConstraint(this.constraint);
+        this.bodyA.world.removeConstraint(this.constraint);
     }
     this.constraint = new p2.DistanceConstraint(this.bodyA, this.bodyB, {
         collideConnected: this.collideConnected,
@@ -467,12 +467,18 @@ P2DistanceConstraint.prototype.postInitialize = function() {
     var self = this;
     this.entity.on('p2:newBody', function (body) {
         self.bodyA = body;
-        self.createConstraint();
+        if (self.bodyB) {
+            self.createConstraint();
+        }
     });
-    this.other.on('p2:newBody', function (body) {
-        self.bodyB = body;
-        self.createConstraint();
-    });    
+    if (this.other) {
+        this.other.on('p2:newBody', function (body) {
+            self.bodyB = body;
+            if (self.bodyA) {
+                self.createConstraint();
+            }
+        });    
+    }
 
     // Handle changes to the constraint's properties
     this.on('attr:localAnchorA', function (value, prev) {
@@ -486,6 +492,15 @@ P2DistanceConstraint.prototype.postInitialize = function() {
             this.constraint.localAnchorB[0] = value.x;
             this.constraint.localAnchorB[1] = value.y;
         }
+    });
+    this.on('attr:other', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyB = body;
+            if (this.bodyA) {
+                this.createConstraint();
+            }
+        });    
     });
     this.on('attr:stiffness', function (value, prev) {
         if (this.constraint) {
