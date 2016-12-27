@@ -463,12 +463,13 @@ P2Body.attributes.add('type', {
     default: 1
 });
 P2Body.attributes.add('mass', { type: 'number', default: 1 });
-P2Body.attributes.add('allowSleep', { type: 'boolean', default: true });
-P2Body.attributes.add('initialVelocity', { type: 'vec2', default: [ 0, 0 ] });
+P2Body.attributes.add('velocity', { type: 'vec2', default: [ 0, 0 ] });
+P2Body.attributes.add('angularVelocity', { type: 'number', default: 0 });
 P2Body.attributes.add('gravityScale', { type: 'number', default: 1 });
 P2Body.attributes.add('fixedX', { type: 'boolean', default: false });
 P2Body.attributes.add('fixedY', { type: 'boolean', default: false });
 P2Body.attributes.add('fixedRotation', { type: 'boolean', default: false });
+P2Body.attributes.add('allowSleep', { type: 'boolean', default: true });
 
 P2Body.prototype.postInitialize = function() {
     var bodyTypes = [
@@ -484,11 +485,12 @@ P2Body.prototype.postInitialize = function() {
     var type = bodyTypes[this.type];
     this.body = new p2.Body({
         allowSleep: this.allowSleep,
+        angularVelocity: this.angularVelocity,
         angle: 0,
         gravityScale: this.gravityScale,
         mass: (type === p2.Body.STATIC) ? 0 : this.mass,
         type: type,
-        velocity: [ this.initialVelocity.x, this.initialVelocity.y ]
+        velocity: [ this.velocity.x, this.velocity.y ]
     });
     this.body.fixedX = this.fixedX;
     this.body.fixedY = this.fixedY;
@@ -747,11 +749,12 @@ P2RevoluteConstraint.prototype.postInitialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2LinearSpring = pc.createScript('p2LinearSpring');
 
-P2LinearSpring.attributes.add('other', { type: 'entity' });
+P2LinearSpring.attributes.add('entityA', { type: 'entity' });
+P2LinearSpring.attributes.add('localAnchorA', { type: 'vec2', default: [ 0, 0 ] });
+P2LinearSpring.attributes.add('entityB', { type: 'entity' });
+P2LinearSpring.attributes.add('localAnchorB', { type: 'vec2', default: [ 0, 0 ] });
 P2LinearSpring.attributes.add('stiffness', { type: 'number', default: 100 });
 P2LinearSpring.attributes.add('damping', { type: 'number', default: 1 });
-P2LinearSpring.attributes.add('localAnchorA', { type: 'vec2', default: [ 0, 0 ] });
-P2LinearSpring.attributes.add('localAnchorB', { type: 'vec2', default: [ 0, 0 ] });
 
 P2LinearSpring.prototype.createSpring = function() {
     // (Re-)create the spring
@@ -770,28 +773,30 @@ P2LinearSpring.prototype.createSpring = function() {
 P2LinearSpring.prototype.postInitialize = function() {
     this.bodyA = null;
     this.bodyB = null;
-    if (this.entity.script.p2Body) {
-        this.bodyA = this.entity.script.p2Body.body;
+    if (this.entityA && this.entityA.script && this.entityA.script.p2Body) {
+        this.bodyA = this.entityA.script.p2Body.body;
     }
-    if (this.other && this.other.script && this.other.script.p2Body) {
-        this.bodyB = this.other.script.p2Body.body;
+    if (this.entityB && this.entityB.script && this.entityB.script.p2Body) {
+        this.bodyB = this.entityB.script.p2Body.body;
     }
-    
-    // If we have two bodies, we can go ahead and create the constraint
+
+    // If we have two bodies, we can go ahead and create the spring
     if (this.bodyA && this.bodyB) {
         this.createSpring();
     }
     
-    // One of the two bodies has changed so (re-)create the constraint
+    // One of the two bodies has changed so (re-)create the spring
     var self = this;
-    this.entity.on('p2:newBody', function (body) {
-        self.bodyA = body;
-        if (self.bodyB) {
-            self.createSpring();
-        }
-    });
-    if (this.other) {
-        this.other.on('p2:newBody', function (body) {
+    if (this.entityA) {
+        this.entityA.on('p2:newBody', function (body) {
+            self.bodyA = body;
+            if (self.bodyB) {
+                self.createSpring();
+            }
+        });    
+    }
+    if (this.entityB) {
+        this.entityB.on('p2:newBody', function (body) {
             self.bodyB = body;
             if (self.bodyA) {
                 self.createSpring();
@@ -799,25 +804,34 @@ P2LinearSpring.prototype.postInitialize = function() {
         });    
     }
 
-    // Handle changes to the constraint's properties
+    // Handle changes to the spring's properties
     this.on('attr:damping', function (value, prev) {
-        if (this.constraint) {
-            this.constraint.damping = value;
+        if (this.spring) {
+            this.spring.damping = value;
         }
     });
-    this.on('attr:localPivotA', function (value, prev) {
-        if (this.constraint) {
-            this.constraint.localPivotA[0] = value.x;
-            this.constraint.localPivotA[1] = value.y;
+    this.on('attr:localAnchorA', function (value, prev) {
+        if (this.spring) {
+            this.spring.localAnchorA[0] = value.x;
+            this.spring.localAnchorA[1] = value.y;
         }
     });
-    this.on('attr:localPivotB', function (value, prev) {
-        if (this.constraint) {
-            this.constraint.localPivotB[0] = value.x;
-            this.constraint.localPivotB[1] = value.y;
+    this.on('attr:localAnchorB', function (value, prev) {
+        if (this.spring) {
+            this.spring.localAnchorB[0] = value.x;
+            this.spring.localAnchorB[1] = value.y;
         }
     });
-    this.on('attr:other', function (value, prev) {
+    this.on('attr:entityA', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyA = body;
+            if (this.bodyB) {
+                this.createSpring();
+            }
+        });
+    });
+    this.on('attr:entityB', function (value, prev) {
         prev.off('p2:newBody');
         value.on('p2:newBody', function (body) {
             this.bodyB = body;
@@ -827,8 +841,8 @@ P2LinearSpring.prototype.postInitialize = function() {
         });    
     });
     this.on('attr:stiffness', function (value, prev) {
-        if (this.constraint) {
-            this.constraint.stiffness = value;
+        if (this.spring) {
+            this.spring.stiffness = value;
         }
     });
 };
