@@ -190,10 +190,14 @@ P2Box.attributes.add('sensor', { type: 'boolean', default: false });
 P2Box.attributes.add('friction', { type: 'number', default: 0.55 });
 P2Box.attributes.add('restitution', { type: 'number', default: 0.55 });
 P2Box.attributes.add('surfaceVelocity', { type: 'number', default: 0 });
+P2Box.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
+P2Box.attributes.add('collisionMask', { type: 'string', default: '00000001' });
 
 P2Box.prototype.initialize = function() {
     this.shape = new p2.Box({
         angle: this.angle,
+        collisionGroup: parseInt(this.collisionGroup, 2),
+        collisionMask: parseInt(this.collisionMask, 2),
         height: this.height,
         position: [ this.position.x, this.position.y ],
         sensor: this.sensor,
@@ -228,6 +232,12 @@ P2Box.prototype.initialize = function() {
     
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
+    });
+    this.on('attr:collisionGroup', function (value, prev) {
+        this.shape.collisionGroup = parseInt(value, 2);
+    });
+    this.on('attr:collisionMask', function (value, prev) {
+        this.shape.collisionMask = parseInt(value, 2);
     });
     this.on('attr:height', function (value, prev) {
         this.shape.height = value;
@@ -278,17 +288,27 @@ P2Circle.attributes.add('radius', { type: 'number', default: 1 });
 P2Circle.attributes.add('angle', { type: 'number', default: 0 });
 P2Circle.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
 P2Circle.attributes.add('sensor', { type: 'boolean', default: false });
+P2Circle.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
+P2Circle.attributes.add('collisionMask', { type: 'string', default: '00000001' });
 
 P2Circle.prototype.initialize = function() {
     this.shape = new p2.Circle({
         angle: this.angle,
-        radius: this.radius,
+        collisionGroup: parseInt(this.collisionGroup, 2),
+        collisionMask: parseInt(this.collisionMask, 2),
         position: [ this.position.x, this.position.y ],
+        radius: this.radius,
         sensor: this.sensor
     });
 
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
+    });
+    this.on('attr:collisionGroup', function (value, prev) {
+        this.shape.collisionGroup = parseInt(value, 2);
+    });
+    this.on('attr:collisionMask', function (value, prev) {
+        this.shape.collisionMask = parseInt(value, 2);
     });
     this.on('attr:position', function (value, prev) {
         this.shape.position[0] = value.x;
@@ -339,10 +359,14 @@ P2Capsule.attributes.add('radius', { type: 'number', default: 1 });
 P2Capsule.attributes.add('angle', { type: 'number', default: 0 });
 P2Capsule.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
 P2Capsule.attributes.add('sensor', { type: 'boolean', default: false });
+P2Capsule.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
+P2Capsule.attributes.add('collisionMask', { type: 'string', default: '00000001' });
 
 P2Capsule.prototype.initialize = function() {
     this.shape = new p2.Capsule({
         angle: this.angle,
+        collisionGroup: parseInt(this.collisionGroup, 2),
+        collisionMask: parseInt(this.collisionMask, 2),
         length: this.length,
         position: [ this.position.x, this.position.y ],
         radius: this.radius,
@@ -351,6 +375,12 @@ P2Capsule.prototype.initialize = function() {
 
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
+    });
+    this.on('attr:collisionGroup', function (value, prev) {
+        this.shape.collisionGroup = parseInt(value, 2);
+    });
+    this.on('attr:collisionMask', function (value, prev) {
+        this.shape.collisionMask = parseInt(value, 2);
     });
     this.on('attr:length', function (value, prev) {
         this.shape.length = value;
@@ -403,16 +433,26 @@ var P2Plane = pc.createScript('p2Plane');
 P2Plane.attributes.add('angle', { type: 'number', default: 0 });
 P2Plane.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
 P2Plane.attributes.add('sensor', { type: 'boolean', default: false });
+P2Plane.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
+P2Plane.attributes.add('collisionMask', { type: 'string', default: '00000001' });
 
 P2Plane.prototype.initialize = function() {
     this.shape = new p2.Plane({
         angle: this.angle,
+        collisionGroup: parseInt(this.collisionGroup, 2),
+        collisionMask: parseInt(this.collisionMask, 2),
         position: [ this.position.x, this.position.y ],
         sensor: this.sensor
     });
 
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
+    });
+    this.on('attr:collisionGroup', function (value, prev) {
+        this.shape.collisionGroup = parseInt(value, 2);
+    });
+    this.on('attr:collisionMask', function (value, prev) {
+        this.shape.collisionMask = parseInt(value, 2);
     });
     this.on('attr:position', function (value, prev) {
         this.shape.position[0] = value.x;
@@ -470,6 +510,7 @@ P2Body.attributes.add('fixedX', { type: 'boolean', default: false });
 P2Body.attributes.add('fixedY', { type: 'boolean', default: false });
 P2Body.attributes.add('fixedRotation', { type: 'boolean', default: false });
 P2Body.attributes.add('allowSleep', { type: 'boolean', default: true });
+P2Body.attributes.add('collisionResponse', { type: 'boolean', default: true });
 
 P2Body.prototype.postInitialize = function() {
     var bodyTypes = [
@@ -487,6 +528,7 @@ P2Body.prototype.postInitialize = function() {
         allowSleep: this.allowSleep,
         angularVelocity: this.angularVelocity,
         angle: 0,
+        collisionResponse: this.collisionResponse,
         gravityScale: this.gravityScale,
         mass: (type === p2.Body.STATIC) ? 0 : this.mass,
         type: type,
@@ -501,6 +543,9 @@ P2Body.prototype.postInitialize = function() {
     // Handle changes to the Body's properties
     this.on('attr:allowSleep', function (value, prev) {
         this.body.allowSleep = value;
+    });
+    this.on('attr:collisionResponse', function (value, prev) {
+        this.body.collisionResponse = value;
     });
     this.on('attr:fixedX', function (value, prev) {
         this.body.fixedX = value;
@@ -526,6 +571,9 @@ P2Body.prototype.postInitialize = function() {
     var shape;
     if (this.entity.script.p2Box) {
         shape = this.entity.script.p2Box.shape;
+    }
+    if (this.entity.script.p2Capsule) {
+        shape = this.entity.script.p2Capsule.shape;
     }
     if (this.entity.script.p2Circle) {
         shape = this.entity.script.p2Circle.shape;
