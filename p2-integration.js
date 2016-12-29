@@ -1068,7 +1068,7 @@ P2RotationalSpring.prototype.createSpring = function() {
         stiffness: this.stiffness
     };
     
-    this.spring = new p2.LinearSpring(this.bodyA, this.bodyB, options);
+    this.spring = new p2.RotationalSpring(this.bodyA, this.bodyB, options);
     this.bodyA.world.addSpring(this.spring);
 };
 
