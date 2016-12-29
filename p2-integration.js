@@ -910,9 +910,9 @@ P2LinearSpring.prototype.createSpring = function() {
         options.worldAnchorA = [ this.anchorA.x, this.anchorA.y ];
     }
     if (this.anchorBSpace === 0) {
-        options.localAnchorB = [ this.anchorB.x, this.anchorA.y ];
+        options.localAnchorB = [ this.anchorB.x, this.anchorB.y ];
     } else {
-        options.worldAnchorB = [ this.anchorB.x, this.anchorA.y ];
+        options.worldAnchorB = [ this.anchorB.x, this.anchorB.y ];
     }
     
     this.spring = new p2.LinearSpring(this.bodyA, this.bodyB, options);
@@ -972,12 +972,12 @@ P2LinearSpring.prototype.postInitialize = function() {
     });
     this.on('attr:anchorASpace', function (value, prev) {
         if (this.spring) {
-            if (this.anchorASpace === 0) {
-                this.spring.localAnchorA[0] = value.x;
-                this.spring.localAnchorA[1] = value.y;
+            if (value === 0) {
+                this.spring.localAnchorA[0] = this.anchorA.x;
+                this.spring.localAnchorA[1] = this.anchorA.y;
             } else {
-                this.spring.worldAnchorA[0] = value.x;
-                this.spring.worldAnchorA[1] = value.y;
+                this.spring.worldAnchorA[0] = this.anchorA.x;
+                this.spring.worldAnchorA[1] = this.anchorA.y;
             }
         }
     });
@@ -994,12 +994,12 @@ P2LinearSpring.prototype.postInitialize = function() {
     });
     this.on('attr:anchorBSpace', function (value, prev) {
         if (this.spring) {
-            if (this.anchorBSpace === 0) {
-                this.spring.localAnchorB[0] = value.x;
-                this.spring.localAnchorB[1] = value.y;
+            if (value === 0) {
+                this.spring.localAnchorB[0] = this.anchorB.x;
+                this.spring.localAnchorB[1] = this.anchorB.y;
             } else {
-                this.spring.worldAnchorB[0] = value.x;
-                this.spring.worldAnchorB[1] = value.y;
+                this.spring.worldAnchorB[0] = this.anchorB.x;
+                this.spring.worldAnchorB[1] = this.anchorB.y;
             }
         }
     });
