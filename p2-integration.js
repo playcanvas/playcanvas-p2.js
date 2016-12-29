@@ -1030,6 +1030,115 @@ P2LinearSpring.prototype.postInitialize = function() {
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// ROTATIONAL SPRING ///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var P2RotationalSpring = pc.createScript('p2RotationalSpring');
+
+P2RotationalSpring.attributes.add('entityA', {
+    type: 'entity',
+    title: 'Entity A',
+    description: 'First connected entity.'
+});
+P2RotationalSpring.attributes.add('entityB', {
+    type: 'entity',
+    title: 'Entity B',
+    description: 'Second connected entity.'
+});
+P2RotationalSpring.attributes.add('stiffness', {
+    type: 'number',
+    default: 100,
+    title: 'Stiffness',
+    description: 'Stiffness of the spring. See Hookes Law.'
+});
+P2RotationalSpring.attributes.add('damping', {
+    type: 'number',
+    default: 1,
+    title: 'Damping',
+    description: 'Damping of the spring.'
+});
+
+P2RotationalSpring.prototype.createSpring = function() {
+    // (Re-)create the spring
+    if (this.spring) {
+        this.bodyA.world.removeSpring(this.spring);
+    }
+
+    var options = {
+        damping: this.damping,
+        stiffness: this.stiffness
+    };
+    
+    this.spring = new p2.LinearSpring(this.bodyA, this.bodyB, options);
+    this.bodyA.world.addSpring(this.spring);
+};
+
+P2RotationalSpring.prototype.postInitialize = function() {
+    this.bodyA = null;
+    this.bodyB = null;
+    if (this.entityA && this.entityA.script && this.entityA.script.p2Body) {
+        this.bodyA = this.entityA.script.p2Body.body;
+    }
+    if (this.entityB && this.entityB.script && this.entityB.script.p2Body) {
+        this.bodyB = this.entityB.script.p2Body.body;
+    }
+
+    // If we have two bodies, we can go ahead and create the spring
+    if (this.bodyA && this.bodyB) {
+        this.createSpring();
+    }
+    
+    // One of the two bodies has changed so (re-)create the spring
+    var self = this;
+    if (this.entityA) {
+        this.entityA.on('p2:newBody', function (body) {
+            self.bodyA = body;
+            if (self.bodyB) {
+                self.createSpring();
+            }
+        });    
+    }
+    if (this.entityB) {
+        this.entityB.on('p2:newBody', function (body) {
+            self.bodyB = body;
+            if (self.bodyA) {
+                self.createSpring();
+            }
+        });    
+    }
+
+    // Handle changes to the spring's properties
+    this.on('attr:damping', function (value, prev) {
+        if (this.spring) {
+            this.spring.damping = value;
+        }
+    });
+    this.on('attr:entityA', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyA = body;
+            if (this.bodyB) {
+                this.createSpring();
+            }
+        });
+    });
+    this.on('attr:entityB', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyB = body;
+            if (this.bodyA) {
+                this.createSpring();
+            }
+        });    
+    });
+    this.on('attr:stiffness', function (value, prev) {
+        if (this.spring) {
+            this.spring.stiffness = value;
+        }
+    });
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // TOP DOWN VEHICLE ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2Vehicle = pc.createScript('p2Vehicle');
