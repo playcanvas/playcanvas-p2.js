@@ -837,24 +837,85 @@ P2RevoluteConstraint.prototype.postInitialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2LinearSpring = pc.createScript('p2LinearSpring');
 
-P2LinearSpring.attributes.add('entityA', { type: 'entity' });
-P2LinearSpring.attributes.add('localAnchorA', { type: 'vec2', default: [ 0, 0 ] });
-P2LinearSpring.attributes.add('entityB', { type: 'entity' });
-P2LinearSpring.attributes.add('localAnchorB', { type: 'vec2', default: [ 0, 0 ] });
-P2LinearSpring.attributes.add('stiffness', { type: 'number', default: 100 });
-P2LinearSpring.attributes.add('damping', { type: 'number', default: 1 });
+P2LinearSpring.attributes.add('entityA', {
+    type: 'entity',
+    title: 'Entity A',
+    description: 'First connected entity.'
+});
+P2LinearSpring.attributes.add('anchorA', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Anchor A',
+    description: 'Where to hook the spring to body A, in local body coordinates or world space coordinates. Defaults to the body center in local space.',
+    placeholder: ['X', 'Y']
+});
+P2LinearSpring.attributes.add('anchorASpace', {
+    type: 'number',
+    enum: [
+        { 'Local': 0 },
+        { 'World': 1 }
+    ],
+    default: 0,
+    title: 'Anchor A Space',
+    description: 'The coordinate space for anchor A. Can be local body space or world space.'
+});
+P2LinearSpring.attributes.add('entityB', {
+    type: 'entity',
+    title: 'Entity B',
+    description: 'Second connected entity.'
+});
+P2LinearSpring.attributes.add('anchorB', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Anchor B',
+    description: 'Where to hook the spring to body B, in local body coordinates or world space coordinates. Defaults to the body center in local space.',
+    placeholder: ['X', 'Y']
+});
+P2LinearSpring.attributes.add('anchorBSpace', {
+    type: 'number',
+    enum: [
+        { 'Local': 0 },
+        { 'World': 1 }
+    ],
+    default: 0,
+    title: 'Anchor B Space',
+    description: 'The coordinate space for anchor B. Can be local body space or world space.'
+});
+P2LinearSpring.attributes.add('stiffness', {
+    type: 'number',
+    default: 100,
+    title: 'Stiffness',
+    description: 'Stiffness of the spring. See Hookes Law.'
+});
+P2LinearSpring.attributes.add('damping', {
+    type: 'number',
+    default: 1,
+    title: 'Damping',
+    description: 'Damping of the spring.'
+});
 
 P2LinearSpring.prototype.createSpring = function() {
     // (Re-)create the spring
     if (this.spring) {
         this.bodyA.world.removeSpring(this.spring);
     }
-    this.spring = new p2.LinearSpring(this.bodyA, this.bodyB, {
+
+    var options = {
         damping: this.damping,
-        localAnchorA: [ this.localAnchorA.x, this.localAnchorA.y ],
-        localAnchorB: [ this.localAnchorB.x, this.localAnchorB.y ],
         stiffness: this.stiffness
-    });
+    };
+    if (this.anchorASpace === 0) {
+        options.localAnchorA = [ this.anchorA.x, this.anchorA.y ];
+    } else {
+        options.worldAnchorA = [ this.anchorA.x, this.anchorA.y ];
+    }
+    if (this.anchorBSpace === 0) {
+        options.localAnchorB = [ this.anchorB.x, this.anchorA.y ];
+    } else {
+        options.worldAnchorB = [ this.anchorB.x, this.anchorA.y ];
+    }
+    
+    this.spring = new p2.LinearSpring(this.bodyA, this.bodyB, options);
     this.bodyA.world.addSpring(this.spring);
 };
 
@@ -898,16 +959,48 @@ P2LinearSpring.prototype.postInitialize = function() {
             this.spring.damping = value;
         }
     });
-    this.on('attr:localAnchorA', function (value, prev) {
+    this.on('attr:anchorA', function (value, prev) {
         if (this.spring) {
-            this.spring.localAnchorA[0] = value.x;
-            this.spring.localAnchorA[1] = value.y;
+            if (this.anchorASpace === 0) {
+                this.spring.localAnchorA[0] = value.x;
+                this.spring.localAnchorA[1] = value.y;
+            } else {
+                this.spring.worldAnchorA[0] = value.x;
+                this.spring.worldAnchorA[1] = value.y;
+            }
         }
     });
-    this.on('attr:localAnchorB', function (value, prev) {
+    this.on('attr:anchorASpace', function (value, prev) {
         if (this.spring) {
-            this.spring.localAnchorB[0] = value.x;
-            this.spring.localAnchorB[1] = value.y;
+            if (this.anchorASpace === 0) {
+                this.spring.localAnchorA[0] = value.x;
+                this.spring.localAnchorA[1] = value.y;
+            } else {
+                this.spring.worldAnchorA[0] = value.x;
+                this.spring.worldAnchorA[1] = value.y;
+            }
+        }
+    });
+    this.on('attr:anchorB', function (value, prev) {
+        if (this.spring) {
+            if (this.anchorBSpace === 0) {
+                this.spring.localAnchorB[0] = value.x;
+                this.spring.localAnchorB[1] = value.y;
+            } else {
+                this.spring.worldAnchorB[0] = value.x;
+                this.spring.worldAnchorB[1] = value.y;
+            }
+        }
+    });
+    this.on('attr:anchorBSpace', function (value, prev) {
+        if (this.spring) {
+            if (this.anchorBSpace === 0) {
+                this.spring.localAnchorB[0] = value.x;
+                this.spring.localAnchorB[1] = value.y;
+            } else {
+                this.spring.worldAnchorB[0] = value.x;
+                this.spring.worldAnchorB[1] = value.y;
+            }
         }
     });
     this.on('attr:entityA', function (value, prev) {
