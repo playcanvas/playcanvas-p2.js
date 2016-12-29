@@ -3,8 +3,13 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2World = pc.createScript('p2World');
 
-P2World.attributes.add('maxSubSteps', { type: 'number', default: 10 });
-P2World.attributes.add('gravity', { type: 'vec2', default: [ 0, -9.8 ] });
+P2World.attributes.add('gravity', { 
+    type: 'vec2', 
+    default: [ 0, -9.8 ],
+    title: 'Gravity',
+    description: 'Gravity to use when approximating the friction max force.',
+    placeholder: ['X', 'Y']
+});
 P2World.attributes.add('axes', {
     type: 'number',
     enum: [
@@ -12,7 +17,27 @@ P2World.attributes.add('axes', {
         { 'XZ': 2 },
         { 'YZ': 3 }
     ],
-    default: 1
+    default: 1,
+    title: 'Axes',
+    description: 'The axes on which the simulation is run.'
+});
+P2World.attributes.add('maxSubSteps', { 
+    type: 'number',
+    default: 10,
+    title: 'Max Substeps',
+    description: 'Maximum number of fixed steps to take when stepping the simulation.'
+});
+P2World.attributes.add('solverIterations', { 
+    type: 'number',
+    default: 10,
+    title: 'Solver Iterations',
+    description: 'The maximum number of iterations to do when solving. More gives better results, but is more expensive.'
+});
+P2World.attributes.add('solverTolerance', {
+    type: 'number',
+    default: 0,
+    title: 'Solver Tolerance',
+    description: 'The error tolerance, per constraint. If the total error is below this limit, the solver will stop iterating. Set to zero for as good solution as possible, but to something larger than zero to make computations faster.'
 });
 P2World.attributes.add('sleepMode', {
     type: 'number',
@@ -21,11 +46,16 @@ P2World.attributes.add('sleepMode', {
         { 'Body Sleeping': 1 },
         { 'Island Sleeping': 2 }
     ],
-    default: 0
+    default: 0,
+    title: 'Sleep Mode',
+    description: 'How to deactivate bodies during simulation. Possible modes are: "No Sleeping", "Body Sleeping" and "Island Sleeping". If sleeping is enabled, you might need to wake up the bodies if they fall asleep. If you want to enable sleeping in the world, but want to disable it for a particular body, see p2Body.allowSleep.'
 });
-P2World.attributes.add('solverIterations', { type: 'number', default: 10 });
-P2World.attributes.add('solverTolerance', { type: 'number', default: 0 });
-P2World.attributes.add('debugDraw', { type: 'boolean', default: false });
+P2World.attributes.add('debugDraw', {
+    type: 'boolean',
+    default: false,
+    title: 'Debug Draw',
+    description: 'Render a visual representation of the physics world in the running app.'
+});
 
 P2World.prototype.initialize = function() {
     var sleepModes = [
@@ -96,6 +126,10 @@ P2World.prototype.initialize = function() {
     });
     this.app.on('p2:addVehicle', function (vehicle) {
         vehicle.addToWorld(world);
+    });
+
+    world.on("postStep", function (evt) {
+        self.app.fire('p2:postStep');
     });
 
     this.world = world;
@@ -704,6 +738,8 @@ P2RevoluteConstraint.attributes.add('relaxation', { type: 'number', default: 4 }
 P2RevoluteConstraint.attributes.add('localPivotA', { type: 'vec2', default: [ 0, 0 ] });
 P2RevoluteConstraint.attributes.add('localPivotB', { type: 'vec2', default: [ 0, 0 ] });
 P2RevoluteConstraint.attributes.add('limits', { type: 'vec2', default: [ -180, 180 ] });
+P2RevoluteConstraint.attributes.add('motor', { type: 'boolean', default: false });
+P2RevoluteConstraint.attributes.add('motorSpeed', { type: 'number', default: 1 });
 
 P2RevoluteConstraint.prototype.createConstraint = function() {
     // (Re-)create the constraint
@@ -718,6 +754,10 @@ P2RevoluteConstraint.prototype.createConstraint = function() {
     this.constraint.setStiffness(this.stiffness);
     this.constraint.setRelaxation(this.relaxation);
     this.constraint.setLimits(this.limits.x, this.limits.y);
+    if (this.motor) {
+        this.constraint.enableMotor();
+        this.constraint.setMotorSpeed(this.motorSpeed);
+    }
     this.bodyA.world.addConstraint(this.constraint);
 };
 
