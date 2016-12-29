@@ -534,17 +534,66 @@ P2Body.attributes.add('type', {
         { 'Dynamic': 1 },
         { 'Kinematic': 2 }
     ],
-    default: 1
+    default: 1,
+    title: 'Type',
+    description: 'The type of motion this body has. Should be one of: 0 (Static), 1 (Dynamic) and 2 (Kinematic). Static bodies do not move, and they do not respond to forces or collision. Dynamic bodies body can move and respond to collisions and forces. Kinematic bodies only moves according to its velocity, and does not respond to collisions or force.'
 });
-P2Body.attributes.add('mass', { type: 'number', default: 1 });
-P2Body.attributes.add('velocity', { type: 'vec2', default: [ 0, 0 ] });
-P2Body.attributes.add('angularVelocity', { type: 'number', default: 0 });
-P2Body.attributes.add('gravityScale', { type: 'number', default: 1 });
-P2Body.attributes.add('fixedX', { type: 'boolean', default: false });
-P2Body.attributes.add('fixedY', { type: 'boolean', default: false });
-P2Body.attributes.add('fixedRotation', { type: 'boolean', default: false });
-P2Body.attributes.add('allowSleep', { type: 'boolean', default: true });
-P2Body.attributes.add('collisionResponse', { type: 'boolean', default: true });
+P2Body.attributes.add('mass', {
+    type: 'number',
+    default: 1,
+    title: 'Mass',
+    description: 'The mass of the body.'
+});
+P2Body.attributes.add('velocity', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Velocity',
+    description: 'The current velocity of the body.',
+    placeholder: ['X', 'Y']
+});
+P2Body.attributes.add('angularVelocity', {
+    type: 'number',
+    default: 0,
+    title: 'Angular Velocity',
+    description: 'The angular velocity of the body, in degrees per second.',
+    placeholder: 'degrees/s'
+});
+P2Body.attributes.add('gravityScale', {
+    type: 'number',
+    default: 1,
+    title: 'Gravity Scale',
+    description: 'Gravity scaling factor. If you want the body to ignore gravity, set this to zero. If you want to reverse gravity, set it to -1.'
+});
+P2Body.attributes.add('fixedX', {
+    type: 'boolean',
+    default: false,
+    title: 'Fixed X',
+    description: 'Set to true if you want to fix the body movement along the X axis. The body will still be able to move along Y.'
+});
+P2Body.attributes.add('fixedY', {
+    type: 'boolean',
+    default: false,
+    title: 'Fixed Y',
+    description: 'Set to true if you want to fix the body movement along the Y axis. The body will still be able to move along X.'
+});
+P2Body.attributes.add('fixedRotation', {
+    type: 'boolean',
+    default: false,
+    title: 'Fixed Rotation',
+    description: 'Set to true if you want to fix the rotation of the body.'
+});
+P2Body.attributes.add('allowSleep', {
+    type: 'boolean',
+    default: true,
+    title: 'Allow Sleep',
+    description: 'If true, the body will automatically fall to sleep. Note that you need to enable sleeping in the p2World before anything will happen.'
+});
+P2Body.attributes.add('collisionResponse', {
+    type: 'boolean',
+    default: true,
+    title: 'Collision Response',
+    description: 'Whether to produce contact forces when in contact with other bodies. Note that contacts will be generated, but they will be disabled. That means that this body will move through other bodies, but it will still trigger contact events, etc.'
+});
 
 P2Body.prototype.postInitialize = function() {
     var bodyTypes = [
