@@ -124,9 +124,6 @@ P2World.prototype.initialize = function() {
     this.app.on('p2:removeBody', function (body) {
         world.removeBody(body);
     });
-    this.app.on('p2:addVehicle', function (vehicle) {
-        vehicle.addToWorld(world);
-    });
 
     world.on("postStep", function (evt) {
         self.app.fire('p2:postStep');
@@ -1190,32 +1187,69 @@ P2RotationalSpring.prototype.postInitialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // TOP DOWN VEHICLE ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-var P2Vehicle = pc.createScript('p2Vehicle');
+var P2TopDownVehicle = pc.createScript('p2TopDownVehicle');
 
-P2Vehicle.attributes.add('mass', { type: 'number', default: 1 });
-P2Vehicle.attributes.add('width', { type: 'number', default: 0.5 });
-P2Vehicle.attributes.add('length', { type: 'number', default: 1 });
-P2Vehicle.attributes.add('engineForce', { type: 'number', default: 7 });
-P2Vehicle.attributes.add('reverseForce', { type: 'number', default: -2 });
-P2Vehicle.attributes.add('brakeForce', { type: 'number', default: 5 });
-P2Vehicle.attributes.add('maxSteer', { type: 'number', default: 36 });
-P2Vehicle.attributes.add('frontWheelOffset', { type: 'vec2', default: [ 0, 0.5] });
-P2Vehicle.attributes.add('frontWheelFriction', { type: 'number', default: 4 });
-P2Vehicle.attributes.add('backWheelOffset', { type: 'vec2', default: [ 0, -0.5] });
-P2Vehicle.attributes.add('backWheelFriction', { type: 'number', default: 3 });
+P2TopDownVehicle.attributes.add('engineForce', {
+    type: 'number',
+    default: 7,
+    title: 'Engine Force',
+    description: 'The force to apply to the back wheel.'
+});
+P2TopDownVehicle.attributes.add('reverseForce', { 
+    type: 'number',
+    default: -2,
+    title: 'Reverse Force',
+    description: 'The force to apply to the back wheel when reversing.'
+});
+P2TopDownVehicle.attributes.add('brakeForce', {
+    type: 'number',
+    default: 5,
+    title: 'Brake Force',
+    description: 'The force to apply to the back wheel when braking.'
+});
+P2TopDownVehicle.attributes.add('maxSteer', {
+    type: 'number',
+    default: 45,
+    title: 'Max Steer',
+    description: 'The maximum steer angle in degrees.',
+    placeholder: 'degrees'
+});
+P2TopDownVehicle.attributes.add('frontWheelOffset', {
+    type: 'vec2',
+    default: [ 0, 1],
+    title: 'Front Offset',
+    description: 'The offset in local body coordinates of the front wheel.',
+    placeholder: [ 'X', 'Y' ]
+});
+P2TopDownVehicle.attributes.add('frontWheelFriction', {
+    type: 'number',
+    default: 4,
+    title: 'Front Friction',
+    description: 'The side friction to apply to the front wheel.'
+});
+P2TopDownVehicle.attributes.add('backWheelOffset', {
+    type: 'vec2',
+    default: [ 0, -1],
+    title: 'Back Offset',
+    description: 'The offset in local body coordinates of the back wheel.',
+    placeholder: [ 'X', 'Y' ]
+});
+P2TopDownVehicle.attributes.add('backWheelFriction', {
+    type: 'number',
+    default: 3,
+    title: 'Back Friction',
+    description: 'The side friction to apply to the back wheel.'
+});
 
-P2Vehicle.prototype.postInitialize = function() {
-    // Create a dynamic body for the chassis
-    this.chassisBody = new p2.Body({
-        mass: this.mass
-    });
-    this.chassisBody.entity = this.entity;
-    var boxShape = new p2.Box({ width: this.width, height: this.length  });
-    this.chassisBody.addShape(boxShape);
-    this.app.fire('p2:addBody', this.chassisBody);
+P2TopDownVehicle.prototype.createVehicle = function() {
+    var body = this.entity.script.p2Body.body;
+
+    if (this.vehicle) {
+        this.vehicle.removeFromWorld(body.world);
+    }
 
     // Create the vehicle
-    this.vehicle = new p2.TopDownVehicle(this.chassisBody);
+    this.vehicle = new p2.TopDownVehicle(body);
 
     // Add one front wheel and one back wheel - we don't actually need four :)
     this.frontWheel = this.vehicle.addWheel({
@@ -1229,28 +1263,67 @@ P2Vehicle.prototype.postInitialize = function() {
     });
     this.backWheel.setSideFriction(this.backWheelFriction); // Less side friction on back wheel makes it easier to drift
 
-    this.app.fire('p2:addVehicle', this.vehicle);
+    this.vehicle.addToWorld(body.world);
+};
 
+P2TopDownVehicle.prototype.postInitialize = function() {
     this.steering = 0;
     this.throttle = false;
     this.brake = false;
+
+    // If we have a body, we can go ahead and create the vehicle
+    if (this.entity.script.p2Body.body) {
+        this.createVehicle();
+    }
+    
+    // The body has changed so (re-)create the vehicle
+    var self = this;
+    this.entity.on('p2:newBody', function (body) {
+        self.createVehicle();
+    });
+
+    // Handle changes to the spring's properties
+    this.on('attr:frontWheelFriction', function (value, prev) {
+        if (this.vehicle) {
+            this.frontWheel.setSideFriction(value);
+        }
+    });
+    this.on('attr:frontWheelOffset', function (value, prev) {
+        if (this.vehicle) {
+            this.frontWheel.localPosition[0] = value.x;
+            this.frontWheel.localPosition[1] = value.y;
+        }
+    });
+    this.on('attr:backWheelFriction', function (value, prev) {
+        if (this.vehicle) {
+            this.backWheel.setSideFriction(value);
+        }
+    });
+    this.on('attr:backWheelOffset', function (value, prev) {
+        if (this.vehicle) {
+            this.backWheel.localPosition[0] = value.x;
+            this.backWheel.localPosition[1] = value.y;
+        }
+    });
 };
 
-P2Vehicle.prototype.update = function(dt) {
-    this.frontWheel.steerValue = this.steering * this.maxSteer / 180 * Math.PI;
+P2TopDownVehicle.prototype.update = function(dt) {
+    if (this.vehicle) {
+        this.frontWheel.steerValue = this.steering * this.maxSteer / 180 * Math.PI;
 
-    // Engine force forward
-    this.backWheel.engineForce = this.throttle ? this.engineForce : 0;
-    this.backWheel.setBrakeForce(0);
+        // Engine force forward
+        this.backWheel.engineForce = this.throttle ? this.engineForce : 0;
+        this.backWheel.setBrakeForce(0);
 
-    if (this.brake) {
-        if (this.backWheel.getSpeed() > 0.1){
-            // Moving forward - add some brake force to slow down
-            this.backWheel.setBrakeForce(this.brakeForce);
-        } else {
-            // Moving backwards - reverse the engine force
-            this.backWheel.setBrakeForce(0);
-            this.backWheel.engineForce = this.reverseForce;
+        if (this.brake) {
+            if (this.backWheel.getSpeed() > 0.1){
+                // Moving forward - add some brake force to slow down
+                this.backWheel.setBrakeForce(this.brakeForce);
+            } else {
+                // Moving backwards - reverse the engine force
+                this.backWheel.setBrakeForce(0);
+                this.backWheel.engineForce = this.reverseForce;
+            }
         }
     }
 };
