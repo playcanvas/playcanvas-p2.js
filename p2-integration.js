@@ -213,16 +213,72 @@ var P2Materials = {};
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2Box = pc.createScript('p2Box');
 
-P2Box.attributes.add('width', { type: 'number', default: 1 });
-P2Box.attributes.add('height', { type: 'number', default: 1 });
-P2Box.attributes.add('angle', { type: 'number', default: 0 });
-P2Box.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
-P2Box.attributes.add('sensor', { type: 'boolean', default: false });
-P2Box.attributes.add('friction', { type: 'number', default: 0.55 });
-P2Box.attributes.add('restitution', { type: 'number', default: 0.55 });
-P2Box.attributes.add('surfaceVelocity', { type: 'number', default: 0 });
-P2Box.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
-P2Box.attributes.add('collisionMask', { type: 'string', default: '00000001' });
+P2Box.attributes.add('width', {
+    type: 'number',
+    default: 1,
+    title: 'Width',
+    description: 'Total width of the box.'
+});
+P2Box.attributes.add('height', {
+    type: 'number',
+    default: 1,
+    title: 'Height',
+    description: 'Total height of the box.'
+});
+P2Box.attributes.add('angle', {
+    type: 'number',
+    default: 0,
+    title: 'Angle',
+    description: 'Body-local angle of the shape in degrees.',
+    placeholder: 'degrees'
+});
+P2Box.attributes.add('position', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Position',
+    description: 'Body-local position of the shape.',
+    placeholder: [ 'X', 'Y' ]
+});
+P2Box.attributes.add('friction', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Friction',
+    description: 'The friction coefficient for this shape.'
+});
+P2Box.attributes.add('restitution', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Restitution',
+    description: 'The restitution for this shape, defining its bounciness.'
+});
+P2Box.attributes.add('surfaceVelocity', {
+    type: 'number',
+    default: 0,
+    title: 'Surface Velocity',
+    description: ''
+});
+P2Box.attributes.add('collisionGroup', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Group',
+    description: 'Collision group that this shape belongs to (bit mask).'
+});
+P2Box.attributes.add('collisionMask', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Mask',
+    description: 'Collision mask of this shape. See collisionGroup.'
+});
+P2Box.attributes.add('sensor', {
+    type: 'boolean',
+    default: false,
+    title: 'Sensor',
+    description: 'Set to true if you want this shape to be a sensor. A sensor does not generate contacts, but it still reports contact events. This is good if you want to know if a shape is overlapping another shape, without them generating contacts.'
+});
 
 P2Box.prototype.initialize = function() {
     this.shape = new p2.Box({
@@ -261,6 +317,7 @@ P2Box.prototype.initialize = function() {
     world.addContactMaterial(contactMaterial1);    
     */
     
+    // Handle changes to the box's properties
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
     });
@@ -315,12 +372,66 @@ P2Box.prototype.initialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2Circle = pc.createScript('p2Circle');
 
-P2Circle.attributes.add('radius', { type: 'number', default: 1 });
-P2Circle.attributes.add('angle', { type: 'number', default: 0 });
-P2Circle.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
-P2Circle.attributes.add('sensor', { type: 'boolean', default: false });
-P2Circle.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
-P2Circle.attributes.add('collisionMask', { type: 'string', default: '00000001' });
+P2Circle.attributes.add('radius', {
+    type: 'number',
+    default: 1,
+    title: 'Radius',
+    description: 'Radius of the circle.'
+});
+P2Circle.attributes.add('angle', {
+    type: 'number',
+    default: 0,
+    title: 'Angle',
+    description: 'Body-local angle of the shape in degrees.',
+    placeholder: 'degrees'
+});
+P2Circle.attributes.add('position', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Position',
+    description: 'Body-local position of the shape.',
+    placeholder: [ 'X', 'Y' ]
+});
+P2Circle.attributes.add('friction', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Friction',
+    description: 'The friction coefficient for this shape.'
+});
+P2Circle.attributes.add('restitution', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Restitution',
+    description: 'The restitution for this shape, defining its bounciness.'
+});
+P2Circle.attributes.add('surfaceVelocity', {
+    type: 'number',
+    default: 0,
+    title: 'Surface Velocity',
+    description: ''
+});
+P2Circle.attributes.add('collisionGroup', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Group',
+    description: 'Collision group that this shape belongs to (bit mask).'
+});
+P2Circle.attributes.add('collisionMask', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Mask',
+    description: 'Collision mask of this shape. See .collisionGroup.'
+});
+P2Circle.attributes.add('sensor', {
+    type: 'boolean',
+    default: false,
+    title: 'Sensor',
+    description: 'Set to true if you want this shape to be a sensor. A sensor does not generate contacts, but it still reports contact events. This is good if you want to know if a shape is overlapping another shape, without them generating contacts.'
+});
 
 P2Circle.prototype.initialize = function() {
     this.shape = new p2.Circle({
@@ -332,6 +443,7 @@ P2Circle.prototype.initialize = function() {
         sensor: this.sensor
     });
 
+    // Handle changes to the circle's properties
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
     });
@@ -385,13 +497,72 @@ P2Circle.prototype.initialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2Capsule = pc.createScript('p2Capsule');
 
-P2Capsule.attributes.add('length', { type: 'number', default: 1 });
-P2Capsule.attributes.add('radius', { type: 'number', default: 1 });
-P2Capsule.attributes.add('angle', { type: 'number', default: 0 });
-P2Capsule.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
-P2Capsule.attributes.add('sensor', { type: 'boolean', default: false });
-P2Capsule.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
-P2Capsule.attributes.add('collisionMask', { type: 'string', default: '00000001' });
+P2Capsule.attributes.add('radius', {
+    type: 'number',
+    default: 1,
+    title: 'Radius',
+    description: 'The radius of the capsule.'
+});
+P2Capsule.attributes.add('length', {
+    type: 'number',
+    default: 1,
+    title: 'Length',
+    description: 'The distance between the end points.'
+});
+P2Capsule.attributes.add('angle', {
+    type: 'number',
+    default: 0,
+    title: 'Angle',
+    description: 'Body-local angle of the shape in degrees.',
+    placeholder: 'degrees'
+});
+P2Capsule.attributes.add('position', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Position',
+    description: 'Body-local position of the shape.',
+    placeholder: [ 'X', 'Y' ]
+});
+P2Capsule.attributes.add('friction', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Friction',
+    description: 'The friction coefficient for this shape.'
+});
+P2Capsule.attributes.add('restitution', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Restitution',
+    description: 'The restitution for this shape, defining its bounciness.'
+});
+P2Capsule.attributes.add('surfaceVelocity', {
+    type: 'number',
+    default: 0,
+    title: 'Surface Velocity',
+    description: ''
+});
+P2Capsule.attributes.add('collisionGroup', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Group',
+    description: 'Collision group that this shape belongs to (bit mask).'
+});
+P2Capsule.attributes.add('collisionMask', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Mask',
+    description: 'Collision mask of this shape. See .collisionGroup.'
+});
+P2Capsule.attributes.add('sensor', {
+    type: 'boolean',
+    default: false,
+    title: 'Sensor',
+    description: 'Set to true if you want this shape to be a sensor. A sensor does not generate contacts, but it still reports contact events. This is good if you want to know if a shape is overlapping another shape, without them generating contacts.'
+});
 
 P2Capsule.prototype.initialize = function() {
     this.shape = new p2.Capsule({
@@ -404,6 +575,7 @@ P2Capsule.prototype.initialize = function() {
         sensor: this.sensor
     });
 
+    // Handle changes to the capsule's properties
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
     });
@@ -461,11 +633,60 @@ P2Capsule.prototype.initialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2Plane = pc.createScript('p2Plane');
 
-P2Plane.attributes.add('angle', { type: 'number', default: 0 });
-P2Plane.attributes.add('position', { type: 'vec2', default: [ 0, 0 ] });
-P2Plane.attributes.add('sensor', { type: 'boolean', default: false });
-P2Plane.attributes.add('collisionGroup', { type: 'string', default: '00000001' });
-P2Plane.attributes.add('collisionMask', { type: 'string', default: '00000001' });
+P2Plane.attributes.add('angle', {
+    type: 'number',
+    default: 0,
+    title: 'Angle',
+    description: 'Body-local angle of the shape in degrees.',
+    placeholder: 'degrees'
+});
+P2Plane.attributes.add('position', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Position',
+    description: 'Body-local position of the shape.',
+    placeholder: [ 'X', 'Y' ]
+});
+P2Plane.attributes.add('friction', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Friction',
+    description: 'The friction coefficient for this shape.'
+});
+P2Plane.attributes.add('restitution', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Restitution',
+    description: 'The restitution for this shape, defining its bounciness.'
+});
+P2Plane.attributes.add('surfaceVelocity', {
+    type: 'number',
+    default: 0,
+    title: 'Surface Velocity',
+    description: ''
+});
+P2Plane.attributes.add('collisionGroup', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Group',
+    description: 'Collision group that this shape belongs to (bit mask).'
+});
+P2Plane.attributes.add('collisionMask', {
+    type: 'string',
+    default: '00000001',
+    title: 'Collision Mask',
+    description: 'Collision mask of this shape. See .collisionGroup.'
+});
+P2Plane.attributes.add('sensor', {
+    type: 'boolean',
+    default: false,
+    title: 'Sensor',
+    description: 'Set to true if you want this shape to be a sensor. A sensor does not generate contacts, but it still reports contact events. This is good if you want to know if a shape is overlapping another shape, without them generating contacts.'
+});
 
 P2Plane.prototype.initialize = function() {
     this.shape = new p2.Plane({
@@ -476,6 +697,7 @@ P2Plane.prototype.initialize = function() {
         sensor: this.sensor
     });
 
+    // Handle changes to the plane's properties
     this.on('attr:angle', function (value, prev) {
         this.shape.angle = value * Math.PI / 180;
     });
@@ -620,7 +842,7 @@ P2Body.prototype.postInitialize = function() {
 
     this.body.entity = this.entity;
 
-    // Handle changes to the Body's properties
+    // Handle changes to the body's properties
     this.on('attr:allowSleep', function (value, prev) {
         this.body.allowSleep = value;
     });
