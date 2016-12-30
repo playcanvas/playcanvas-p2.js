@@ -50,6 +50,12 @@ P2World.attributes.add('sleepMode', {
     title: 'Sleep Mode',
     description: 'How to deactivate bodies during simulation. Possible modes are: "No Sleeping", "Body Sleeping" and "Island Sleeping". If sleeping is enabled, you might need to wake up the bodies if they fall asleep. If you want to enable sleeping in the world, but want to disable it for a particular body, see p2Body.allowSleep.'
 });
+P2World.attributes.add('islandSplit', {
+    type: 'boolean',
+    default: true,
+    title: 'Island Split',
+    description: 'Whether to enable island splitting. Island splitting can be an advantage for both precision and performance.'
+});
 P2World.attributes.add('debugDraw', {
     type: 'boolean',
     default: false,
@@ -69,7 +75,8 @@ P2World.prototype.initialize = function() {
         gravity: [
             this.gravity.x,
             this.gravity.y
-        ]
+        ],
+        islandSplit: this.islandSplit
     });
     world.sleepMode = sleepModes[this.sleepMode];
     world.solver.iterations = this.solverIterations;
@@ -79,6 +86,9 @@ P2World.prototype.initialize = function() {
     this.on('attr:gravity', function (value, prev) {
         world.gravity[0] = value.x;
         world.gravity[1] = value.y;
+    });
+    this.on('attr:islandSplit', function (value, prev) {
+        world.islandSplit = value;
     });
     this.on('attr:sleepMode', function (value, prev) {
         world.sleepMode = sleepModes[value];
