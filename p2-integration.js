@@ -206,7 +206,38 @@ P2World.prototype.postUpdate = function(dt) {
     }
 };
 
-var P2Materials = {};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// MATERIAL ////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var P2Material = pc.createScript('p2Material');
+
+P2Material.attributes.add('friction', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Friction',
+    description: 'The friction coefficient for this material.'
+});
+P2Material.attributes.add('restitution', {
+    type: 'number',
+    default: 0.55,
+    min: 0,
+    max: 1,
+    title: 'Restitution',
+    description: 'The restitution for this material, defining its bounciness.'
+});
+P2Material.attributes.add('surfaceVelocity', {
+    type: 'number',
+    default: 0,
+    title: 'Surface Velocity',
+    description: ''
+});
+
+P2Material.prototype.initialize = function() {
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // BOX SHAPE ///////////////////////////////////////////////////////////////////////////////////////
@@ -238,28 +269,6 @@ P2Box.attributes.add('position', {
     title: 'Position',
     description: 'Body-local position of the shape.',
     placeholder: [ 'X', 'Y' ]
-});
-P2Box.attributes.add('friction', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Friction',
-    description: 'The friction coefficient for this shape.'
-});
-P2Box.attributes.add('restitution', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Restitution',
-    description: 'The restitution for this shape, defining its bounciness.'
-});
-P2Box.attributes.add('surfaceVelocity', {
-    type: 'number',
-    default: 0,
-    title: 'Surface Velocity',
-    description: ''
 });
 P2Box.attributes.add('collisionGroup', {
     type: 'string',
@@ -392,28 +401,6 @@ P2Circle.attributes.add('position', {
     description: 'Body-local position of the shape.',
     placeholder: [ 'X', 'Y' ]
 });
-P2Circle.attributes.add('friction', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Friction',
-    description: 'The friction coefficient for this shape.'
-});
-P2Circle.attributes.add('restitution', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Restitution',
-    description: 'The restitution for this shape, defining its bounciness.'
-});
-P2Circle.attributes.add('surfaceVelocity', {
-    type: 'number',
-    default: 0,
-    title: 'Surface Velocity',
-    description: ''
-});
 P2Circle.attributes.add('collisionGroup', {
     type: 'string',
     default: '00000001',
@@ -523,28 +510,6 @@ P2Capsule.attributes.add('position', {
     description: 'Body-local position of the shape.',
     placeholder: [ 'X', 'Y' ]
 });
-P2Capsule.attributes.add('friction', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Friction',
-    description: 'The friction coefficient for this shape.'
-});
-P2Capsule.attributes.add('restitution', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Restitution',
-    description: 'The restitution for this shape, defining its bounciness.'
-});
-P2Capsule.attributes.add('surfaceVelocity', {
-    type: 'number',
-    default: 0,
-    title: 'Surface Velocity',
-    description: ''
-});
 P2Capsule.attributes.add('collisionGroup', {
     type: 'string',
     default: '00000001',
@@ -646,28 +611,6 @@ P2Plane.attributes.add('position', {
     title: 'Position',
     description: 'Body-local position of the shape.',
     placeholder: [ 'X', 'Y' ]
-});
-P2Plane.attributes.add('friction', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Friction',
-    description: 'The friction coefficient for this shape.'
-});
-P2Plane.attributes.add('restitution', {
-    type: 'number',
-    default: 0.55,
-    min: 0,
-    max: 1,
-    title: 'Restitution',
-    description: 'The restitution for this shape, defining its bounciness.'
-});
-P2Plane.attributes.add('surfaceVelocity', {
-    type: 'number',
-    default: 0,
-    title: 'Surface Velocity',
-    description: ''
 });
 P2Plane.attributes.add('collisionGroup', {
     type: 'string',
@@ -1222,11 +1165,6 @@ P2LinearSpring.prototype.postInitialize = function() {
     }
 
     // Handle changes to the spring's properties
-    this.on('attr:damping', function (value, prev) {
-        if (this.spring) {
-            this.spring.damping = value;
-        }
-    });
     this.on('attr:anchorA', function (value, prev) {
         if (this.spring) {
             if (this.anchorASpace === 0) {
@@ -1269,6 +1207,11 @@ P2LinearSpring.prototype.postInitialize = function() {
                 this.spring.worldAnchorB[0] = this.anchorB.x;
                 this.spring.worldAnchorB[1] = this.anchorB.y;
             }
+        }
+    });
+    this.on('attr:damping', function (value, prev) {
+        if (this.spring) {
+            this.spring.damping = value;
         }
     });
     this.on('attr:entityA', function (value, prev) {
@@ -1504,7 +1447,7 @@ P2TopDownVehicle.prototype.postInitialize = function() {
         self.createVehicle();
     });
 
-    // Handle changes to the spring's properties
+    // Handle changes to the vehicle's properties
     this.on('attr:frontWheelFriction', function (value, prev) {
         if (this.vehicle) {
             this.frontWheel.setSideFriction(value);
