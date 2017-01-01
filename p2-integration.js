@@ -1021,6 +1021,167 @@ P2DistanceConstraint.prototype.postInitialize = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRISMATIC CONSTRAINT ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var P2PrismaticConstraint = pc.createScript('p2PrismaticConstraint');
+
+P2PrismaticConstraint.attributes.add('entityA', {
+    type: 'entity',
+    title: 'Entity A',
+    description: 'First entity with body participating in the constraint.'
+});
+P2PrismaticConstraint.attributes.add('localAnchorA', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Local Anchor A',
+    description: 'Local anchor in body A specified in local body coordinates.',
+    placeholder: ['X', 'Y']
+});
+P2PrismaticConstraint.attributes.add('entityB', {
+    type: 'entity',
+    title: 'Entity B',
+    description: 'Second entity with body participating in the constraint.'
+});
+P2PrismaticConstraint.attributes.add('localAnchorB', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Local Anchor B',
+    description: 'Local anchor in body B specified in local body coordinates.',
+    placeholder: ['X', 'Y']
+});
+P2PrismaticConstraint.attributes.add('localAxisA', {
+    type: 'vec2',
+    default: [ 1, 0 ],
+    title: 'Local Axis A',
+    description: "An axis, defined in body A frame, that body B's anchor point may slide along.",
+    placeholder: ['X', 'Y']
+});
+P2PrismaticConstraint.attributes.add('disableRotationalLock', {
+    type: 'boolean',
+    default: false,
+    title: 'Disable Rotational Lock',
+    description: 'If set to true, body of entityB will be free to rotate around its anchor point.'
+});
+P2PrismaticConstraint.attributes.add('collideConnected', {
+    type: 'boolean',
+    default: true,
+    title: 'Collide Connected',
+    description: 'Set to true if you want the connected bodies to collide.'
+});
+P2PrismaticConstraint.attributes.add('stiffness', {
+    type: 'number',
+    default: 1000000,
+    title: 'Stiffness',
+    description: 'Set stiffness for this constraint.'
+});
+P2PrismaticConstraint.attributes.add('relaxation', {
+    type: 'number',
+    default: 4,
+    title: 'Relaxation',
+    description: 'Set relaxation for this constraint.'
+});
+
+P2PrismaticConstraint.prototype.createConstraint = function() {
+    // (Re-)create the constraint
+    if (this.constraint) {
+        this.bodyA.world.removeConstraint(this.constraint);
+    }
+    this.constraint = new p2.PrismaticConstraint(this.bodyA, this.bodyB, {
+        collideConnected: this.collideConnected,
+        disableRotationalLock: this.disableRotationalLock,
+        localAnchorA: [ this.localAnchorA.x, this.localAnchorA.y ],
+        localAnchorB: [ this.localAnchorB.x, this.localAnchorB.y ],
+        localAxisA: [ this.localAxisA.x, this.localAxisA.y ]
+    });
+    this.constraint.setStiffness(this.stiffness);
+    this.constraint.setRelaxation(this.relaxation);
+    this.bodyA.world.addConstraint(this.constraint);
+};
+
+P2PrismaticConstraint.prototype.postInitialize = function() {
+    this.bodyA = null;
+    this.bodyB = null;
+    if (this.entityA && this.entityA.script && this.entityA.script.p2Body) {
+        this.bodyA = this.entityA.script.p2Body.body;
+    }
+    if (this.entityB && this.entityB.script && this.entityB.script.p2Body) {
+        this.bodyB = this.entityB.script.p2Body.body;
+    }
+
+    // If we have two bodies, we can go ahead and create the constraint
+    if (this.bodyA && this.bodyB) {
+        this.createConstraint();
+    }
+    
+    // One of the two bodies has changed so (re-)create the constraint
+    var self = this;
+    if (this.entityA) {
+        this.entityA.on('p2:newBody', function (body) {
+            self.bodyA = body;
+            if (self.bodyB) {
+                self.createConstraint();
+            }
+        });    
+    }
+    if (this.entityB) {
+        this.entityB.on('p2:newBody', function (body) {
+            self.bodyB = body;
+            if (self.bodyA) {
+                self.createConstraint();
+            }
+        });    
+    }
+
+    // Handle changes to the constraint's properties
+    this.on('attr:entityA', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyA = body;
+            if (this.bodyB) {
+                this.createConstraint();
+            }
+        });    
+    });
+    this.on('attr:entityB', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyB = body;
+            if (this.bodyA) {
+                this.createConstraint();
+            }
+        });    
+    });
+    this.on('attr:localAnchorA', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.localAnchorA[0] = value.x;
+            this.constraint.localAnchorA[1] = value.y;
+        }
+    });
+    this.on('attr:localAnchorB', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.localAnchorB[0] = value.x;
+            this.constraint.localAnchorB[1] = value.y;
+        }
+    });
+    this.on('attr:localAxisA', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.localAxisA[0] = value.x;
+            this.constraint.localAxisA[1] = value.y;
+        }
+    });
+    this.on('attr:relaxation', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setRelaxation(value);
+        }
+    });
+    this.on('attr:stiffness', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setStiffness(value);
+        }
+    });
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // REVOLUTE CONSTRAINT /////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2RevoluteConstraint = pc.createScript('p2RevoluteConstraint');
@@ -1088,7 +1249,7 @@ P2RevoluteConstraint.attributes.add('motorEnabled', {
 });
 P2RevoluteConstraint.attributes.add('motorSpeed', {
     type: 'number',
-    default: 1,
+    default: 0,
     title: 'Motor Speed',
     description: 'Set the speed of the rotational constraint motor.'
 });
