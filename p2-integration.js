@@ -245,7 +245,33 @@ P2Material.attributes.add('surfaceVelocity', {
     description: ''
 });
 
+P2Material.materialDefs = [];
+
+P2Material.prototype.updateMaterial = function() {
+    var i, materialDef, materialDefs, numMaterialDefs;
+
+    materialDefs = P2Material.materialDefs;
+    numMaterialDefs = materialDefs.length;
+
+    for (i = 0; i < numMaterials; i++) {
+        materialDef = materialDefs[i];
+
+        if ((materialDef.friction === this.friction) && (materialDef.restitution === this.restitution)) {
+            this.material = materialDef.material;
+            return;
+        }
+    }
+
+    materialDefs.push({
+        
+    });
+};
+
 P2Material.prototype.initialize = function() {
+    
+    this.on('attr', function(name, value, prev) {
+        this.updateMaterial();
+    });
 };
 
 
@@ -859,12 +885,48 @@ P2Body.prototype.postInitialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2DistanceConstraint = pc.createScript('p2DistanceConstraint');
 
-P2DistanceConstraint.attributes.add('other', { type: 'entity' });
-P2DistanceConstraint.attributes.add('collideConnected', { type: 'boolean', default: true });
-P2DistanceConstraint.attributes.add('stiffness', { type: 'number', default: 1e6 });
-P2DistanceConstraint.attributes.add('relaxation', { type: 'number', default: 4 });
-P2DistanceConstraint.attributes.add('localAnchorA', { type: 'vec2', default: [ 0, 0 ] });
-P2DistanceConstraint.attributes.add('localAnchorB', { type: 'vec2', default: [ 0, 0 ] });
+P2DistanceConstraint.attributes.add('entityA', {
+    type: 'entity',
+    title: 'Entity A',
+    description: 'First entity with body participating in the constraint.'
+});
+P2DistanceConstraint.attributes.add('localAnchorA', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Local Anchor A',
+    description: 'Local anchor in body A specified in local body coordinates.',
+    placeholder: ['X', 'Y']
+});
+P2DistanceConstraint.attributes.add('entityB', {
+    type: 'entity',
+    title: 'Entity B',
+    description: 'Second entity with body participating in the constraint.'
+});
+P2DistanceConstraint.attributes.add('localAnchorB', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Local Anchor B',
+    description: 'Local anchor in body B specified in local body coordinates.',
+    placeholder: ['X', 'Y']
+});
+P2DistanceConstraint.attributes.add('collideConnected', {
+    type: 'boolean',
+    default: true,
+    title: 'Collide Connected',
+    description: 'Set to true if you want the connected bodies to collide.'
+});
+P2DistanceConstraint.attributes.add('stiffness', {
+    type: 'number',
+    default: 1000000,
+    title: 'Stiffness',
+    description: 'Set stiffness for this constraint.'
+});
+P2DistanceConstraint.attributes.add('relaxation', {
+    type: 'number',
+    default: 4,
+    title: 'Relaxation',
+    description: 'Set relaxation for this constraint.'
+});
 
 P2DistanceConstraint.prototype.createConstraint = function() {
     // (Re-)create the constraint
@@ -884,13 +946,13 @@ P2DistanceConstraint.prototype.createConstraint = function() {
 P2DistanceConstraint.prototype.postInitialize = function() {
     this.bodyA = null;
     this.bodyB = null;
-    if (this.entity.script.p2Body) {
-        this.bodyA = this.entity.script.p2Body.body;
+    if (this.entityA && this.entityA.script && this.entityA.script.p2Body) {
+        this.bodyA = this.entityA.script.p2Body.body;
     }
-    if (this.other && this.other.script && this.other.script.p2Body) {
-        this.bodyB = this.other.script.p2Body.body;
+    if (this.entityB && this.entityB.script && this.entityB.script.p2Body) {
+        this.bodyB = this.entityB.script.p2Body.body;
     }
-    
+
     // If we have two bodies, we can go ahead and create the constraint
     if (this.bodyA && this.bodyB) {
         this.createConstraint();
@@ -898,14 +960,16 @@ P2DistanceConstraint.prototype.postInitialize = function() {
     
     // One of the two bodies has changed so (re-)create the constraint
     var self = this;
-    this.entity.on('p2:newBody', function (body) {
-        self.bodyA = body;
-        if (self.bodyB) {
-            self.createConstraint();
-        }
-    });
-    if (this.other) {
-        this.other.on('p2:newBody', function (body) {
+    if (this.entityA) {
+        this.entityA.on('p2:newBody', function (body) {
+            self.bodyA = body;
+            if (self.bodyB) {
+                self.createConstraint();
+            }
+        });    
+    }
+    if (this.entityB) {
+        this.entityB.on('p2:newBody', function (body) {
             self.bodyB = body;
             if (self.bodyA) {
                 self.createConstraint();
@@ -914,6 +978,24 @@ P2DistanceConstraint.prototype.postInitialize = function() {
     }
 
     // Handle changes to the constraint's properties
+    this.on('attr:entityA', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyA = body;
+            if (this.bodyB) {
+                this.createConstraint();
+            }
+        });    
+    });
+    this.on('attr:entityB', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyB = body;
+            if (this.bodyA) {
+                this.createConstraint();
+            }
+        });    
+    });
     this.on('attr:localAnchorA', function (value, prev) {
         if (this.constraint) {
             this.constraint.localAnchorA[0] = value.x;
@@ -926,23 +1008,14 @@ P2DistanceConstraint.prototype.postInitialize = function() {
             this.constraint.localAnchorB[1] = value.y;
         }
     });
-    this.on('attr:other', function (value, prev) {
-        prev.off('p2:newBody');
-        value.on('p2:newBody', function (body) {
-            this.bodyB = body;
-            if (this.bodyA) {
-                this.createConstraint();
-            }
-        });    
+    this.on('attr:relaxation', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setRelaxation(value);
+        }
     });
     this.on('attr:stiffness', function (value, prev) {
         if (this.constraint) {
             this.constraint.setStiffness(value);
-        }
-    });
-    this.on('attr:relaxation', function (value, prev) {
-        if (this.constraint) {
-            this.constraint.setRelaxation(value);
         }
     });
 };
@@ -952,15 +1025,73 @@ P2DistanceConstraint.prototype.postInitialize = function() {
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 var P2RevoluteConstraint = pc.createScript('p2RevoluteConstraint');
 
-P2RevoluteConstraint.attributes.add('other', { type: 'entity' });
-P2RevoluteConstraint.attributes.add('collideConnected', { type: 'boolean', default: true });
-P2RevoluteConstraint.attributes.add('stiffness', { type: 'number', default: 1e6 });
-P2RevoluteConstraint.attributes.add('relaxation', { type: 'number', default: 4 });
-P2RevoluteConstraint.attributes.add('localPivotA', { type: 'vec2', default: [ 0, 0 ] });
-P2RevoluteConstraint.attributes.add('localPivotB', { type: 'vec2', default: [ 0, 0 ] });
-P2RevoluteConstraint.attributes.add('limits', { type: 'vec2', default: [ -180, 180 ] });
-P2RevoluteConstraint.attributes.add('motor', { type: 'boolean', default: false });
-P2RevoluteConstraint.attributes.add('motorSpeed', { type: 'number', default: 1 });
+P2RevoluteConstraint.attributes.add('entityA', {
+    type: 'entity',
+    title: 'Entity A',
+    description: 'First entity with body participating in the constraint.'
+});
+P2RevoluteConstraint.attributes.add('localPivotA', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Local Pivot A',
+    description: 'Local pivot in body A specified in local body coordinates.',
+    placeholder: ['X', 'Y']
+});
+P2RevoluteConstraint.attributes.add('entityB', {
+    type: 'entity',
+    title: 'Entity B',
+    description: 'Second entity with body participating in the constraint.'
+});
+P2RevoluteConstraint.attributes.add('localPivotB', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Local Pivot B',
+    description: 'Local pivot in body B specified in local body coordinates.',
+    placeholder: ['X', 'Y']
+});
+P2RevoluteConstraint.attributes.add('collideConnected', {
+    type: 'boolean',
+    default: true,
+    title: 'Collide Connected',
+    description: 'Set to true if you want the connected bodies to collide.'
+});
+P2RevoluteConstraint.attributes.add('stiffness', {
+    type: 'number',
+    default: 1000000,
+    title: 'Stiffness',
+    description: 'Set stiffness for this constraint.'
+});
+P2RevoluteConstraint.attributes.add('relaxation', {
+    type: 'number',
+    default: 4,
+    title: 'Relaxation',
+    description: 'Set relaxation for this constraint.'
+});
+P2RevoluteConstraint.attributes.add('limitsEnabled', {
+    type: 'boolean',
+    default: false,
+    title: 'Limits Enabled',
+    description: 'Enable constraint angle limits.'
+});
+P2RevoluteConstraint.attributes.add('limits', {
+    type: 'vec2',
+    default: [ 0, 0 ],
+    title: 'Limits',
+    description: 'Set the constraint angle limits.',
+    placeholder: ['lower', 'upper']
+});
+P2RevoluteConstraint.attributes.add('motorEnabled', {
+    type: 'boolean',
+    default: false,
+    title: 'Motor Enabled',
+    description: 'Enable the rotational motor.'
+});
+P2RevoluteConstraint.attributes.add('motorSpeed', {
+    type: 'number',
+    default: 1,
+    title: 'Motor Speed',
+    description: 'Set the speed of the rotational constraint motor.'
+});
 
 P2RevoluteConstraint.prototype.createConstraint = function() {
     // (Re-)create the constraint
@@ -972,26 +1103,31 @@ P2RevoluteConstraint.prototype.createConstraint = function() {
         localPivotA: [ this.localPivotA.x, this.localPivotA.y ],
         localPivotB: [ this.localPivotB.x, this.localPivotB.y ]
     });
+    if (this.constraint.limitsEnabled) {
+        this.constraint.setLimits(this.limits.x * Math.PI / 180, this.limits.y * Math.PI / 180);
+    }
     this.constraint.setStiffness(this.stiffness);
     this.constraint.setRelaxation(this.relaxation);
-    this.constraint.setLimits(this.limits.x, this.limits.y);
-    if (this.motor) {
+    if (this.motorEnabled) {
         this.constraint.enableMotor();
-        this.constraint.setMotorSpeed(this.motorSpeed);
+    } else {
+        this.constraint.disableMotor();
     }
+    this.constraint.setMotorSpeed(this.motorSpeed);
+
     this.bodyA.world.addConstraint(this.constraint);
 };
 
 P2RevoluteConstraint.prototype.postInitialize = function() {
     this.bodyA = null;
     this.bodyB = null;
-    if (this.entity.script.p2Body) {
-        this.bodyA = this.entity.script.p2Body.body;
+    if (this.entityA && this.entityA.script && this.entityA.script.p2Body) {
+        this.bodyA = this.entityA.script.p2Body.body;
     }
-    if (this.other && this.other.script && this.other.script.p2Body) {
-        this.bodyB = this.other.script.p2Body.body;
+    if (this.entityB && this.entityB.script && this.entityB.script.p2Body) {
+        this.bodyB = this.entityB.script.p2Body.body;
     }
-    
+
     // If we have two bodies, we can go ahead and create the constraint
     if (this.bodyA && this.bodyB) {
         this.createConstraint();
@@ -999,14 +1135,16 @@ P2RevoluteConstraint.prototype.postInitialize = function() {
     
     // One of the two bodies has changed so (re-)create the constraint
     var self = this;
-    this.entity.on('p2:newBody', function (body) {
-        self.bodyA = body;
-        if (self.bodyB) {
-            self.createConstraint();
-        }
-    });
-    if (this.other) {
-        this.other.on('p2:newBody', function (body) {
+    if (this.entityA) {
+        this.entityA.on('p2:newBody', function (body) {
+            self.bodyA = body;
+            if (self.bodyB) {
+                self.createConstraint();
+            }
+        });    
+    }
+    if (this.entityB) {
+        this.entityB.on('p2:newBody', function (body) {
             self.bodyB = body;
             if (self.bodyA) {
                 self.createConstraint();
@@ -1015,9 +1153,44 @@ P2RevoluteConstraint.prototype.postInitialize = function() {
     }
 
     // Handle changes to the constraint's properties
+    this.on('attr:entityA', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyA = body;
+            if (this.bodyB) {
+                this.createConstraint();
+            }
+        });    
+    });
+    this.on('attr:entityB', function (value, prev) {
+        prev.off('p2:newBody');
+        value.on('p2:newBody', function (body) {
+            this.bodyB = body;
+            if (this.bodyA) {
+                this.createConstraint();
+            }
+        });    
+    });
     this.on('attr:limits', function (value, prev) {
         if (this.constraint) {
-            this.constraint.setLimits(value.x, value.y);
+            if (this.constraint.limitsEnabled) {
+                this.constraint.setLimits(this.limits.x * Math.PI / 180, this.limits.y * Math.PI / 180);
+            }
+        }
+    });
+    this.on('attr:limitsEnabled', function (value, prev) {
+        if (this.constraint) {
+            if (value) {
+                this.constraint.setLimits(this.limits.x * Math.PI / 180, this.limits.y * Math.PI / 180);
+            } else {
+                this.constraint.lowerlimitEnabled = false;                
+                this.constraint.upperlimitEnabled = false;                
+            }
+        }
+    });
+    this.on('attr:lowerLimitEnabled', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.lowerLimitEnabled = value;
         }
     });
     this.on('attr:localPivotA', function (value, prev) {
@@ -1032,14 +1205,19 @@ P2RevoluteConstraint.prototype.postInitialize = function() {
             this.constraint.localPivotB[1] = value.y;
         }
     });
-    this.on('attr:other', function (value, prev) {
-        prev.off('p2:newBody');
-        value.on('p2:newBody', function (body) {
-            this.bodyB = body;
-            if (this.bodyA) {
-                this.createConstraint();
+    this.on('attr:motorEnabled', function (value, prev) {
+        if (this.constraint) {
+            if (value) {
+                this.constraint.enableMotor();
+            } else {
+                this.constraint.disableMotor();
             }
-        });    
+        }
+    });
+    this.on('attr:motorSpeed', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.setMotorSpeed(value);
+        }
     });
     this.on('attr:relaxation', function (value, prev) {
         if (this.constraint) {
@@ -1049,6 +1227,16 @@ P2RevoluteConstraint.prototype.postInitialize = function() {
     this.on('attr:stiffness', function (value, prev) {
         if (this.constraint) {
             this.constraint.setStiffness(value);
+        }
+    });
+    this.on('attr:upperLimit', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.upperLimit = value;
+        }
+    });
+    this.on('attr:upperLimitEnabled', function (value, prev) {
+        if (this.constraint) {
+            this.constraint.upperLimitEnabled = value;
         }
     });
 };
