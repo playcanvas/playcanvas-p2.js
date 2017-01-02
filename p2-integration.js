@@ -21,6 +21,12 @@ P2World.attributes.add('axes', {
     title: 'Axes',
     description: 'The axes on which the simulation is run.'
 });
+P2World.attributes.add('defaultFriction', { 
+    type: 'number', 
+    default: 0.3,
+    title: 'Default Friction',
+    description: 'The default global friction.'
+});
 P2World.attributes.add('maxSubSteps', { 
     type: 'number',
     default: 10,
@@ -81,8 +87,12 @@ P2World.prototype.initialize = function() {
     world.sleepMode = sleepModes[this.sleepMode];
     world.solver.iterations = this.solverIterations;
     world.solver.tolerance = this.solverTolerance;
+    world.defaultContactMaterial.friction = this.defaultFriction;
 
     // Handle changes to the World's properties
+    this.on('attr:defaultFriction', function (value, prev) {
+        world.defaultContactMaterial.friction = value;
+    });
     this.on('attr:gravity', function (value, prev) {
         world.gravity[0] = value.x;
         world.gravity[1] = value.y;
@@ -756,6 +766,22 @@ P2Body.attributes.add('angularVelocity', {
     description: 'The angular velocity of the body, in degrees per second.',
     placeholder: 'degrees/s'
 });
+P2Body.attributes.add('damping', {
+    type: 'number',
+    default: 0.1,
+    min: 0,
+    max: 1,
+    title: 'Damping',
+    description: 'The linear damping acting on the body in the velocity direction. Should be a value between 0 and 1.'
+});
+P2Body.attributes.add('angularDamping', {
+    type: 'number',
+    min: 0,
+    max: 1,
+    default: 0.1,
+    title: 'Angular Damping',
+    description: 'The angular damping acting on the body. Should be a value between 0 and 1.'
+});
 P2Body.attributes.add('gravityScale', {
     type: 'number',
     default: 1,
@@ -786,11 +812,33 @@ P2Body.attributes.add('allowSleep', {
     title: 'Allow Sleep',
     description: 'If true, the body will automatically fall to sleep. Note that you need to enable sleeping in the p2World before anything will happen.'
 });
+P2Body.attributes.add('sleepSpeedLimit', {
+    type: 'number',
+    default: 0.2,
+    title: 'Sleep Speed Limit',
+    description: 'If the speed (the norm of the velocity) is smaller than this value, the body is considered sleepy.'
+});
+P2Body.attributes.add('sleepTimeLimit', {
+    type: 'number',
+    default: 1,
+    title: 'Sleep Time Limit',
+    description: 'If the body has been sleepy for this sleepTimeLimit seconds, it is considered sleeping.',
+    placeholder: 'seconds'
+});
 P2Body.attributes.add('collisionResponse', {
     type: 'boolean',
     default: true,
     title: 'Collision Response',
     description: 'Whether to produce contact forces when in contact with other bodies. Note that contacts will be generated, but they will be disabled. That means that this body will move through other bodies, but it will still trigger contact events, etc.'
+});
+
+Object.defineProperty(P2Body.prototype, 'angularForce', {
+    get: function() {
+        return this.body ? this.body.angularForce : 0;
+    },
+    set: function(value) {
+        this.body.angularForce = value;
+    }
 });
 
 P2Body.prototype.postInitialize = function() {
@@ -825,8 +873,14 @@ P2Body.prototype.postInitialize = function() {
     this.on('attr:allowSleep', function (value, prev) {
         this.body.allowSleep = value;
     });
+    this.on('attr:angularDamping', function (value, prev) {
+        this.body.angularDamping = value;
+    });
     this.on('attr:collisionResponse', function (value, prev) {
         this.body.collisionResponse = value;
+    });
+    this.on('attr:damping', function (value, prev) {
+        this.body.damping = value;
     });
     this.on('attr:fixedX', function (value, prev) {
         this.body.fixedX = value;
@@ -1451,6 +1505,12 @@ P2LinearSpring.attributes.add('anchorBSpace', {
     title: 'Anchor B Space',
     description: 'The coordinate space for anchor B. Can be local body space or world space.'
 });
+P2LinearSpring.attributes.add('restLength', {
+    type: 'number',
+    default: 0,
+    title: 'Rest Length',
+    description: 'Rest length of the spring.'
+});
 P2LinearSpring.attributes.add('stiffness', {
     type: 'number',
     default: 100,
@@ -1483,6 +1543,9 @@ P2LinearSpring.prototype.createSpring = function() {
         options.localAnchorB = [ this.anchorB.x, this.anchorB.y ];
     } else {
         options.worldAnchorB = [ this.anchorB.x, this.anchorB.y ];
+    }
+    if (this.restLength > 0) {
+        options.restLength = this.restLength;
     }
     
     this.spring = new p2.LinearSpring(this.bodyA, this.bodyB, options);
@@ -1590,6 +1653,11 @@ P2LinearSpring.prototype.postInitialize = function() {
                 this.createSpring();
             }
         });    
+    });
+    this.on('attr:restLength', function (value, prev) {
+        if (this.spring) {
+            this.spring.restLength = value;
+        }
     });
     this.on('attr:stiffness', function (value, prev) {
         if (this.spring) {
