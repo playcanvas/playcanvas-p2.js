@@ -161,38 +161,13 @@ P2World.prototype.postUpdate = function(dt) {
     bodies = this.world.bodies;
     numBodies = bodies.length;
 
-    // Set the transforms of kinematic rigid bodies from parent entities
-    for (i = 0; i < numBodies; i++) {
-        body = bodies[i];
-        if (body.type === p2.Body.KINEMATIC) {
-            // TODO: handle angle
-            entity = body.entity;
-
-            pos = entity.getPosition();
-            switch (this.axes) {
-                case 1:
-                    body.position[0] = pos.x;
-                    body.position[1] = pos.y;
-                    break;
-                case 2:
-                    body.position[0] = pos.x;
-                    body.position[1] = -pos.z;
-                    break;
-                case 3:
-                    body.position[0] = pos.y;
-                    body.position[1] = -pos.z;
-                    break;
-            }
-        }
-    }
-
     // Update the simulation
     this.world.step(1 / 60, dt, this.maxSubSteps);
 
-    // Set the transforms of entities from dynamic bodies
+    // Set the transforms of entities from dynamic and kinematic bodies
     for (i = 0; i < numBodies; i++) {
         body = bodies[i];
-        if (body.type === p2.Body.DYNAMIC) {
+        if ((body.type === p2.Body.DYNAMIC) || (body.type === p2.Body.KINEMATIC)) {
             entity = body.entity;
 
             pos = entity.getPosition();
@@ -1895,6 +1870,17 @@ P2TopDownVehicle.prototype.postInitialize = function() {
         if (this.vehicle) {
             this.backWheel.localPosition[0] = value.x;
             this.backWheel.localPosition[1] = value.y;
+        }
+    });
+
+    this.on("enable", function () {
+        if (this.vehicle && this.entity.script && this.entity.script.p2Body && this.entity.script.p2Body.body) {
+            this.vehicle.addToWorld(this.entity.script.p2Body.body.world);
+        }
+    });
+    this.on("disable", function () {
+        if (this.vehicle && this.entity.script && this.entity.script.p2Body && this.entity.script.p2Body.body) {
+            this.vehicle.removeFromWorld(this.entity.script.p2Body.body.world);
         }
     });
 };
