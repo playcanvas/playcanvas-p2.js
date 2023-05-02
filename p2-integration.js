@@ -162,11 +162,11 @@ P2World.prototype.postUpdate = function(dt) {
     var shape, shapes, numShapes;
     var entity, pos;
 
-    bodies = this.world.bodies;
-    numBodies = bodies.length;
-
     // Update the simulation
     this.world.step(1 / 60, dt, this.maxSubSteps);
+
+    bodies = this.world.bodies;
+    numBodies = bodies.length;
 
     // Set the transforms of entities from dynamic and kinematic bodies
     for (i = 0; i < numBodies; i++) {
