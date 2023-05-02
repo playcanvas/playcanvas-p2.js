@@ -128,15 +128,19 @@ P2World.prototype.initialize = function() {
     });
     this.app.on('p2:addBody', function (body) {
         var pos = body.entity.getPosition();
+        var rot = body.entity.getEulerAngles();
         switch (self.axes) {
             case 1:
                 body.position = [ pos.x, pos.y ];
+                body.angle = rot.z * Math.PI / 180;
                 break;
             case 2:
                 body.position = [ pos.x, -pos.z ];
+                body.angle = rot.y * Math.PI / 180;
                 break;
             case 3:
                 body.position = [ -pos.z, pos.y ];
+                body.angle = rot.x * Math.PI / 180;
                 break;
         }
         world.addBody(body);
