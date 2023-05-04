@@ -316,7 +316,7 @@ P2Box.attributes.add('sensor', {
 
 P2Box.prototype.initialize = function() {
     this.shape = new p2.Box({
-        angle: this.angle,
+        angle: this.angle * Math.PI / 180,
         collisionGroup: parseInt(this.collisionGroup, 2),
         collisionMask: parseInt(this.collisionMask, 2),
         height: this.height,
@@ -343,7 +343,7 @@ P2Box.prototype.initialize = function() {
         P2Materials[this.friction] = material;
     }
 
-//    this.shape.material = material;
+    // this.shape.material = material;
 
     var contactMaterial1 = new p2.ContactMaterial(boxShape.material, platformShape1.material, {
         surfaceVelocity:-0.5,
@@ -447,7 +447,7 @@ P2Circle.attributes.add('sensor', {
 
 P2Circle.prototype.initialize = function() {
     this.shape = new p2.Circle({
-        angle: this.angle,
+        angle: this.angle * Math.PI / 180,
         collisionGroup: parseInt(this.collisionGroup, 2),
         collisionMask: parseInt(this.collisionMask, 2),
         position: [ this.position.x, this.position.y ],
@@ -556,7 +556,7 @@ P2Capsule.attributes.add('sensor', {
 
 P2Capsule.prototype.initialize = function() {
     this.shape = new p2.Capsule({
-        angle: this.angle,
+        angle: this.angle * Math.PI / 180,
         collisionGroup: parseInt(this.collisionGroup, 2),
         collisionMask: parseInt(this.collisionMask, 2),
         length: this.length,
@@ -658,7 +658,7 @@ P2Plane.attributes.add('sensor', {
 
 P2Plane.prototype.initialize = function() {
     this.shape = new p2.Plane({
-        angle: this.angle,
+        angle: this.angle * Math.PI / 180,
         collisionGroup: parseInt(this.collisionGroup, 2),
         collisionMask: parseInt(this.collisionMask, 2),
         position: [ this.position.x, this.position.y ],
