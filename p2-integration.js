@@ -190,6 +190,31 @@ P2World.prototype.postUpdate = function(dt) {
                     break;
             }
         }
+        
+        if(this.debugDraw) {
+            var aabb = body.getAABB();
+            var points = [
+                new pc.Vec3(aabb.lowerBound[0], aabb.lowerBound[1], 0),
+                new pc.Vec3(aabb.upperBound[0], aabb.lowerBound[1], 0),
+                new pc.Vec3(aabb.upperBound[0], aabb.lowerBound[1], 0),
+                new pc.Vec3(aabb.upperBound[0], aabb.upperBound[1], 0),
+                new pc.Vec3(aabb.upperBound[0], aabb.upperBound[1], 0),
+                new pc.Vec3(aabb.lowerBound[0], aabb.upperBound[1], 0),
+                new pc.Vec3(aabb.lowerBound[0], aabb.upperBound[1], 0),
+                new pc.Vec3(aabb.lowerBound[0], aabb.lowerBound[1], 0)
+            ]
+            var colors = [
+                pc.Color.RED,
+                pc.Color.RED,
+                pc.Color.RED,
+                pc.Color.RED,
+                pc.Color.RED,
+                pc.Color.RED,
+                pc.Color.RED,
+                pc.Color.RED
+            ]
+            this.app.drawLines(points, colors, false)
+        }
     }
     
     if (this.debugDraw) {
